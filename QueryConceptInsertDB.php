@@ -54,10 +54,10 @@ class QueryConceptInsertDB extends FileProcessUtility{
 		}
 		sort($this->querys);
 	}
-	public function run($query){
+	public function run(){
 		echo $this->clusterNum."\n";
 		$this->ParseInput();
-		print_r($this->querys);
+		//print_r($this->querys);
 		$this->insertDB();
 		/*
 		$sql = sprintf(
@@ -75,21 +75,23 @@ class QueryConceptInsertDB extends FileProcessUtility{
 				`rowID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,
 				`Query` VARCHAR( 255 ) NOT NULL ,
 				`ClusterNum` INT NOT NULL ,
-				UNIQUE (  `Query` ,  `ClusterNum` )
+				`SimValue` DOUBLE NOT NULL ,
+				UNIQUE (  `Query` ,  `ClusterNum` ),
+				INDEX (`SimValue`)
 			) ENGINE = MYISAM", $this->targetTB);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 
 		foreach($this->querys as $i => $q){
 			$sql = sprintf(
-				"insert into `%s` (`Query`, `ClusterNum`) 
-				values('%s', %d)", $this->targetTB, $q, $this->clusterNum);
+				"insert into `%s` (`Query`, `ClusterNum`, `SimValue`) 
+				values('%s', %d, 1.0)", $this->targetTB, $q, $this->clusterNum);
 			$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		}
 	}
 	private function __insertDB($q){
 		$sql = sprintf(
-			"insert into `%s` (`Query`, `ClusterNum`) 
-			values('%s', %d)", $this->targetTB, $q, $this->clusterNum);
+			"insert into `%s` (`Query`, `ClusterNum`, `SimValue`) 
+			values('%s', %d, 1.0)", $this->targetTB, $q, $this->clusterNum);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 	}
 }
