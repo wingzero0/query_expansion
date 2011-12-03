@@ -52,5 +52,5 @@ class OnlineQueryClassify{
 		print_r($ret);
 	}
 }
-OnlineQueryClassify::test();
+//OnlineQueryClassify::test();
 ?>

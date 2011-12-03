@@ -1,6 +1,6 @@
 <?php
 //sample usage:
-//php run_QueryconceptInsertDB.php -c 1.txt -TB QueryCluster
+//php run_QueryConceptInsertDB.php -c 1.txt -TB QueryCluster
 require("/home/b95119/query_expansion/QueryConceptInsertDB.php");
 
 $para = ParameterParser($argc, $argv);

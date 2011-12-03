@@ -76,8 +76,10 @@ class QueryConceptInsertDB extends FileProcessUtility{
 				`Query` VARCHAR( 255 ) NOT NULL ,
 				`ClusterNum` INT NOT NULL ,
 				`SimValue` DOUBLE NOT NULL ,
+				`NumOfQuery` INT NULL COMMENT  'records the num of target query appeared in cluster',
 				UNIQUE (  `Query` ,  `ClusterNum` ),
-				INDEX (`SimValue`)
+				INDEX (`SimValue`),
+				INDEX (  `NumOfQuery` )
 			) ENGINE = MYISAM", $this->targetTB);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 
