@@ -2,36 +2,65 @@
 // Class NgramGenerate wants to generate the query into n-gram.
 // CombinationNgramGenerate just generate the n-grab by terms possible combination.
 
-require_once(dirname(__FILE__)."/QuerySpliter.php");
+//require_once(dirname(__FILE__)."/QuerySpliter.php");
 
 class NgramGenerate{
 	public $qWords;
 	public $q;
-	private $querySpliter;
+	//private $querySpliter;
 	public function __construct($query){
 		// the query should be already splite by white and save into an array 
 		mb_internal_encoding("UTF-8");
-		//$this->qSpliter = new QuerySpliter($query);
-		$this->ReplaceNewQuery($query); 
+		$this->q = NULL;
+		$this->qWords = NULL;
+		$this->ReplaceNewQuery($query);
 	}
 	public function ReplaceNewQuery($query){
-		$this->q = $query;
-		//$this->qSpliter->ReplaceNewQuery($query);		
-		//$this->qWords = $this->qSpliter->SplitTerm();
+		if ($query != $this->q){
+			$this->q = $query;
+			$this->qWords = null;
+			return 0;
+		}else{
+			return 1;
+		}
+	}
+	public function GetQWords(){
+		if ($this->qWords == NULL){ 
+			$this->qWords = $this->SplitWord();
+		}
+		return $this->qWords;
 	}
 	public function GetNgrams($n){
 		if ($n <1){
 			return NULL;
 		}
-		$words = $this->SplitWord();
+
+		$Ngrams = array();
+
+		if ($n == 1){
+			$pattern = "\s";
+			$list = mb_split($pattern, $this->q);
+			foreach ($list as $i => $v){
+				if (empty($v)){
+					continue;
+				}
+				$Ngrams[] = $v;
+			}
+			return $Ngrams;
+		}
+
+		if ($this->qWords == NULL){ 
+			$this->qWords = $this->SplitWord();
+		}
+
 		$start = 0;
 		$end = $n - 1;
-		$Ngrams = array();
-		while($end < count($words)) {
+		
+		while($end < count($this->qWords)) {
 			//concate the words
 			$tmp = "";
 			for ($i = $start;$i<=$end;$i++){
-				$tmp.= $words[$i];
+				$tmp.= $this->qWords[$i];
 			}
 			$Ngrams[] = $tmp;
 			$start++;
@@ -67,7 +96,7 @@ class NgramGenerate{
 	}
 	public static function test(){
 		$obj = new NgramGenerate("good morning\tev");
-		$obj->ReplaceNewQuery("改成中文 morning\tev\naa");
+		$obj->ReplaceNewQuery("ha中\tmorning\tev\naa");
 		$ret = $obj->GetNgrams(2);
 		foreach($ret as $i => $w){
 			echo "'".$w."'\n";
