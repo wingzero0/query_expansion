@@ -73,7 +73,7 @@ class QueryConceptInsertDB extends FileProcessUtility{
 		$sql = sprintf(
 			"CREATE TABLE if not exists `msn_click_log`.`%s` (
 				`rowID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,
-				`Query` VARCHAR( 255 ) NOT NULL ,
+				`Query` VARCHAR( 255 ) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL ,
 				`ClusterNum` INT NOT NULL ,
 				`SimValue` DOUBLE NOT NULL ,
 				`NumOfQuery` INT NULL COMMENT  'records the num of target query appeared in cluster',
