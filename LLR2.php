@@ -32,9 +32,15 @@ class LLR{
 		$p1 = pow($p, $k);
 		$p2 = pow( 1 - $p, $n - $k);
 		$coeff = $this->binomialCoeff($n, $k);
+		//if (is_nan($coeff)){
+			//fprintf(STDERR, "\tn:%d\tk:%d\tcoeff:%lf\n", $n,$k,$coeff);
+		//}
 		//fprintf(STDERR, "\tn:%d\tk:%d\tcoeff:%lf\n", $n,$k,$coeff);
 		$prob = $coeff * $p1 * $p2;
-		//$logProb = $coeff * $p1 * $p2;
+		/*
+		if (is_nan($prob)){
+			fprintf(STDERR, "\tn:%d\tk:%d\tcoeff:%lf\tprob:%lf\n", $n,$k,$coeff, $prob);
+		}*/
 		return $prob;
 	}
 	public function binomialCoeff($n, $k){
@@ -102,8 +108,11 @@ class LLR{
 			}
 			
 			//fprintf(STDERR, "w1:%s\tw2:%s\n", $w1, $w2);
-			$llr = $this->CalculateLLR($count12, $count1, $count2, $this->N);
-			$llrArray[$w1][$w2] = $llr;
+			$ret = $this->CalculateLLR($count12, $count1, $count2, $this->N);
+			if ($ret["flag"] == true){
+				$this->LLRSingleInsert($w1,$w2,$ret["logLLR"]);
+			}
+			//$llrArray[$w1][$w2] = $llr;
 			$counter++;
 		}
 		return $llrArray;
@@ -116,23 +125,38 @@ class LLR{
 		// H2: p(w2 | w1) != p(w2 | not w1); p1 = c12/c1; p2 = (c2-c12)/(N-c1)
 		// L(H2) = b(c1;c12, p1) * b(n-c1;c2-c12, p2)
 		
+		$ret["flag"] = false;
 		//fprintf(STDERR, "\tc12:%d\tc1:%d\tc2:%d\tN:%d\n", $count12,$count1,$count2,$N);
 		$p = $count2 / $N;
 		$H11 = $this->binomialDistribution($count1, $count12, $p);
 		$H12 = $this->binomialDistribution($N - $count1, $count2 - $count12, $p);
 		//fprintf(STDERR, "\tH11:%lf\tH12:%lf\n", $H11,$H12);
 		
-		$logH1 = log10( $this->binomialDistribution($count1, $count12, $p)) + 
-			log10( $this->binomialDistribution($N - $count1, $count2 - $count12, $p));
+		if (is_nan($H11) || is_nan($H12) || $H11 == 0 || $H12 == 0){
+			// get INF
+			return $ret;
+		}
+		$logH1 = log10($H11) + log10($H12);
 			
 		$p1 = $count12 / $count1;
 		$p2 = ($count2-$count12)/($N-$count1);
-		$logH2 = log10( $this->binomialDistribution($count1, $count12, $p1)) + 
-			log10( $this->binomialDistribution($N - $count1, $count2 - $count12, $p2));
+		
+		$H21 = $this->binomialDistribution($count1, $count12, $p1);
+		$H22 = $this->binomialDistribution($N - $count1, $count2 - $count12, $p2);
+		//fprintf(STDERR, "\tH21:%lf\tH22:%lf\n", $H21,$H22);
+		
+		if (is_nan($H21) || is_nan($H22) || $H21 == 0 || $H22 == 0 ){
+			// get INF
+			return $ret;
+		}
+		$logH2 = log10($H21) + log10($H22);
+		
 			
 		//fprintf(STDERR, "\tlogH1:%lf\tlogH2:%lf\n", $logH1,$logH2);
 		$logLLR = $logH1 - $logH2;
-		return $logLLR; 
+		$ret["flag"] = true;
+		$ret["logLLR"] = $logLLR;
+		return $ret; 
 	}
 	public function CreateDB(){
 		$sql = sprintf(
@@ -140,7 +164,7 @@ class LLR{
 				`id` INT NOT NULL AUTO_INCREMENT ,
 				`Word1` VARCHAR( 255 ) NOT NULL ,
 				`Word2` VARCHAR( 255 ) NOT NULL ,
-				`LLR` DOUBLE NOT NULL ,
+				`LLR` DOUBLE NULL ,
 				PRIMARY KEY (  `id` ) ,
 				KEY `Word1` ( `Word1` ),
 				KEY `Word2` ( `Word2` ),
@@ -149,20 +173,6 @@ class LLR{
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 	}
 	public function LLRInsert($llrArray) {
-		/*
-		$pattern = "'";
-		$replacement = "\\'";
-		print_r($llrArray);
-		foreach($llrArray as $w1 => $v){
-			$word1 = mb_ereg_replace($pattern, $replacement, $w1);
-			foreach($v as $w2 => $llr){
-				$word2 = mb_ereg_replace($pattern, $replacement, $w2);
-				$sql = sprintf(
-					"insert into `%s` (`Word1`, `Word2`, `LLR`) 
-					values('%s', '%s', %lf)", $this->llrTB,$word1,$word2,$llr);
-				$result = mysql_query($sql) or die($sql."\n".mysql_error());
-			}
-		}*/
 		foreach($llrArray as $w1 => $v){
 			foreach($v as $w2 => $llr){
 				$sql = sprintf(
@@ -172,10 +182,22 @@ class LLR{
 			}
 		}
 	}
+	public function LLRSingleInsert($w1,$w2,$llr){
+		if (is_nan($llr)){
+			$sql = sprintf(
+				"insert into `%s` (`Word1`, `Word2`, `LLR`) 
+				values('%s', '%s', NULL)", $this->llrTB,$w1,$w2);
+		}else{
+			$sql = sprintf(
+				"insert into `%s` (`Word1`, `Word2`, `LLR`) 
+				values('%s', '%s', %lf)", $this->llrTB,$w1,$w2,$llr);
+		}
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+	}	
 	public function Run(){
 		$this->CreateDB();
 		$llrArray = $this->GetCount();
-		$this->LLRInsert($llrArray);
+		//$this->LLRInsert($llrArray);
 	}
 	public static function test() {
 		$obj = new LLR("matrix_test", "word_test", "llr_test", 200);

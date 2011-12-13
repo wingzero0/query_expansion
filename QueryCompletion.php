@@ -16,16 +16,19 @@ class QueryCompletion{
 	public $q2;
 	public $queryClassifier;
 	public $threshold;
+	public $flowThreshold;
 	public $querySpliter;
 	public $nGenerate;
 	public function __construct($q1, $q2, $qTB, $wTB,$cFlowTB){
-		$this->q1 = $q1;
-		$this->q2 = $q2;
+		$this->q1 = addslashes($q1);
+		$this->q2 = addslashes($q2);
 		$this->queryClassifier = new OnlineQueryClassify($qTB);
 		$this->queryTB = $qTB;
 		$this->wordTB = $wTB;
 		$this->clusterFlowTB = $cFlowTB;
-		$this->threshold = 0.00001;
+		//$this->threshold = 0.00001;
+		$this->threshold = 0.0;
+		$this->flowThreshold = 0.01;
 		$this->querySpliter = new QuerySpliter($q2);
 		$this->nGenerate = new NgramGenerate($q2);
 	}
@@ -38,21 +41,27 @@ class QueryCompletion{
 		// Get the pool of concept
 		$conceptPool = array();
 		foreach ($q1Concepts as $c1 => $probC1){
+			fprintf(STDERR,"processing c1:%d\n", $c1);
 			$flowProb = $this->GetConceptFlowProb($c1);
 			//print_r($flowProb);
 			if (empty($flowProb)){
 				continue;
 			}
 			foreach ($flowProb as $c2 => $prob){
-				//echo "c1 = $c1, c2 = $c2\n";
 				$prob2 = $this->QueryGeneratingProb($c2, $this->q2);
+				echo "c1 = $c1, c2 = $c2 prob1 = $prob prob2 = $prob2\n";
 				if ($prob * $prob2 > $this->threshold){
 					//$conceptPool[$c1][$c2] = $probC1 * $prob * $prob2; 
 					$conceptPool[$c1][$c2] = $prob * $prob2; // ignore the ProbC1 in the first version
 				}
 			}
+			if (isset($conceptPool[$c1])){
+				arsort($conceptPool[$c1]);
+			}else{
+				fprintf(STDERR,"the c1 following is empty\n");
+			}
 		}
-		arsort($conceptPool[$c1]);	
+		//arsort($conceptPool[$c1]);	
 		return $conceptPool;
 	}
 	public function QueryGeneratingProb($c, $query){
@@ -107,6 +116,7 @@ class QueryCompletion{
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		if($row = mysql_fetch_row($result)){
 			if (intval($row[0]) == 0){
+				fprintf(STDERR, "the number of query in cluster is empty\n");
 				return 0.0; // cluster is empty??
 			}else{
 				//echo "ClusterNum total:".$row[0]."\n";
@@ -126,9 +136,9 @@ class QueryCompletion{
 		
 		$sql = sprintf(
 			"select `Cluster2`,`Prob` from `%s`
-			where `Cluster1` = %d 
+			where `Cluster1` = %d and `prob` > %lf 
 			order by `Prob` desc", 
-			$this->clusterFlowTB, $c1);
+			$this->clusterFlowTB, $c1,$this->flowThreshold);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = NULL;
 		while($row = mysql_fetch_row($result)){
@@ -149,6 +159,10 @@ class QueryCompletion{
 		}
 		$queryPool = array();
 		$uniqueC2 = array();
+		if (empty($conceptPool)){
+			fprintf(STDERR,"conceptPool is empty\n");
+			return -1;
+		}
 		foreach ($conceptPool as $c1 => $c2Set){
 			foreach ($c2Set as $c2 => $prob){
 				$uniqueC2[$c2] = 1;
@@ -210,7 +224,7 @@ class QueryCompletion{
 			if ($ret === false){
 				print_r($row[0]);
 			}else {
-				$clusterS[] = $matches[0];
+				$clusterS[] = addslashes($matches[0]);
 			}
 		}
 		return $clusterS;

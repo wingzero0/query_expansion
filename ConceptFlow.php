@@ -9,6 +9,7 @@ class ConceptFlow extends FileProcessUtility{
 	public $oldTB;
 	public $newTB;
 	public function __construct($para){
+		parent::__construct($para);
 		if (isset($para["oldTB"])){
 			$this->oTB = $para["oldTB"];
 		}else {
@@ -28,7 +29,7 @@ class ConceptFlow extends FileProcessUtility{
 		$sql = sprintf(
 			"select `cluster1`, `cluster2`, `pair_value` 
 			from `msn_click_log`.`%s`
-			order by `clusert1`, `cluster2`",
+			order by `cluster1`, `cluster2`",
 			$this->oTB);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$sum = 0;
@@ -51,20 +52,20 @@ class ConceptFlow extends FileProcessUtility{
 	}
 	public function insertDB($flowProb){
 		$sql = sprintf(
-			"CREATE TABLE  `msn_click_log`.`%s` (
+			"CREATE TABLE if not exists `msn_click_log`.`%s` (
 				`Cluster1` INT( 11 ) NOT NULL ,
 				`Cluster2` INT( 11 ) NOT NULL ,
 				`Prob` DOUBLE NOT NULL ,
 				PRIMARY KEY (  `Cluster1` ,  `Cluster2` ) ,
 				KEY  `Prob` (  `Prob` )
-			) ENGINE = MYISAM DEFAULT CHARSET = utf8 COLLATE = utf8_unicode_ci", $this->nTB);
+			) ENGINE = MYISAM", $this->nTB);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 
 		foreach($flowProb as $c1 => $v){
 			foreach($v as $c2 => $prob){
 				$sql = sprintf(
 					"insert into `%s` (`Cluster1`, `Cluster2`, `Prob`) 
-					values(%d, %d, %lf)", $c1,$c2,$prob);
+					values(%d, %d, %lf)", $this->nTB,$c1,$c2,$prob);
 				$result = mysql_query($sql) or die($sql."\n".mysql_error());
 			}
 		}
