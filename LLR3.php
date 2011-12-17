@@ -35,10 +35,9 @@ class LLR{
 		return $res;
 	}
 	public function LogBinomialDistribution($n,$k, $p){
-		
 		if ($p == 0.0){
-			echo "$p = 0.0\n";
-			return 0.0; 
+			//echo "$p = 0.0\n";
+			return log($p); // let it get INF 
 		}
 		//$p1 = pow($p,$k);
 		//$p2 = pow(1-$p,$n - $k);
@@ -47,30 +46,6 @@ class LLR{
 		$p2 = $this->LogPow( 1 - $p, $n - $k);
 		$prob = $p1 + $p2;		
 		return $prob;
-	}
-	public function LogBinomialCoeff($n, $k){
-		$j = 1;
-		$res = 0;
-		
-      if($k < 0 || $k > $n)
-         return 0;
-      if(($n - $k) < $k)
-         $k = $n - $k;
-
-		$nStr = sprintf("%d", $n);
-		$kStr = sprintf("%d", $k);
-		
-		if (isset($this->coeffTable[$nStr][$kStr])){
-			return $this->coeffTable[$nStr][$kStr];
-		}		
-		
-      while($j <= $k) {
-         $res += log10($n);
-         $res -= log10($j);
-         $n--;$j++;
-      }
-      $this->coeffTable[$nStr][$kStr] = $res;
-      return $res;
 	}
 	public function GetCount(){
 		
@@ -118,12 +93,10 @@ class LLR{
 			}
 			
 			//fprintf(STDERR, "w1:%s\tw2:%s\n", $w1, $w2);
-			$ret = $this->CalculateLLR($count12, $count1, $count2, $this->N);
-			if ($ret["flag"] == true){
-				$this->LLRSingleInsert($w1,$w2,$ret["logLLR"]);
-			}else{
-				fprintf(STDERR, "get INF:w1=".$w1."\tw2=".$w2."\n");
-			}
+			$llr = $this->CalculateLLR($count12, $count1, $count2, $this->N);
+			
+			$this->LLRSingleInsert($w1,$w2,$llr);
+			
 			//$llrArray[$w1][$w2] = $llr;
 			//$counter++;
 		}
@@ -137,18 +110,12 @@ class LLR{
 		// H2: p(w2 | w1) != p(w2 | not w1); p1 = c12/c1; p2 = (c2-c12)/(N-c1)
 		// L(H2) = b(c1;c12, p1) * b(n-c1;c2-c12, p2)
 		
-		$ret["flag"] = false;
 		//fprintf(STDERR, "\tc12:%d\tc1:%d\tc2:%d\tN:%d\n", $count12,$count1,$count2,$N);
 		$p = $count2 / $N;
 		$H11 = $this->LogBinomialDistribution($count1, $count12, $p);
 		$H12 = $this->LogBinomialDistribution($N - $count1, $count2 - $count12, $p);
 		//fprintf(STDERR, "\tH11:%lf\tH12:%lf\n", $H11,$H12);
 		
-		/*
-		if (is_infinite($H11) || is_infinite($H12)){
-			// get INF
-			return $ret;
-		}*/
 		$logH1 = $H11 + $H12;
 			
 		$p1 = $count12 / $count1;
@@ -157,19 +124,12 @@ class LLR{
 		$H21 = $this->LogBinomialDistribution($count1, $count12, $p1);
 		$H22 = $this->LogBinomialDistribution($N - $count1, $count2 - $count12, $p2);
 		//fprintf(STDERR, "\tH21:%lf\tH22:%lf\n", $H21,$H22);
-		/*
-		if (is_infinite($H21) || is_infinite($H22)){
-			// get INF
-			return $ret;
-		}*/
+
 		$logH2 = $H21 + $H22;
 		
-			
 		//fprintf(STDERR, "\tlogH1:%lf\tlogH2:%lf\n", $logH1,$logH2);
 		$logLLR = $logH1 - $logH2;
-		$ret["flag"] = true;
-		$ret["logLLR"] = $logLLR;
-		return $ret; 
+		return $logLLR; 
 	}
 	public function CreateDB(){
 		$sql = sprintf(
@@ -184,16 +144,6 @@ class LLR{
 				KEY  `LLR` (  `LLR` )
 			) ENGINE = MYISAM DEFAULT CHARSET = utf8 COLLATE = utf8_bin", $this->llrTB);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
-	}
-	public function LLRInsert($llrArray) {
-		foreach($llrArray as $w1 => $v){
-			foreach($v as $w2 => $llr){
-				$sql = sprintf(
-					"insert into `%s` (`Word1`, `Word2`, `LLR`) 
-					values('%s', '%s', %lf)", $this->llrTB,$w1,$w2,$llr);
-				$result = mysql_query($sql) or die($sql."\n".mysql_error());
-			}
-		}
 	}
 	public function LLRSingleInsert($w1,$w2,$llr){
 		if (is_infinite($llr) || is_nan($llr) ){

@@ -1,7 +1,7 @@
 <?php
 //sample usage:
 //php run_LLR.php -concurrent matrix_test -single word_test -llr llr_test -N 30840188 
-require("/home/b95119/query_expansion/LLR2.php");
+require("/home/b95119/query_expansion/LLR3.php");
 
 $para = ParameterParser($argc, $argv);
 $keys = array("concurrent", "single", "llr", "N");

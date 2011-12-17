@@ -7,12 +7,43 @@
 class QuerySpliter{
 	public $targetTB;
 	public $q;
+	public $qSegment;
 	public function __construct($q){
 		mb_internal_encoding("UTF-8");
 		$this->ReplaceNewQuery($q); 
 	}
+	public function GetQWords(){
+		return $this->qSegment;
+	}
+	public function GetNgrams($n){
+		if ($n <1){
+			return NULL;
+		}
+
+		$Ngrams = array();
+
+		if ($n == 1){
+			return $this->qSegment;
+		}
+
+		$start = 0;
+		$end = $n - 1;
+		
+		while($end < count($this->qSegment)) {
+			//concate the words
+			$tmp = $this->qSegment[$start];
+			for ($i = $start + 1;$i<=$end;$i++){
+				$tmp.= " ".$this->qSegment[$i];
+			}
+			$Ngrams[] = $tmp;
+			$start++;
+			$end++;
+		}
+		return $Ngrams;
+	}
 	public function ReplaceNewQuery($q){
 		$this->q = $q;
+		$this->qSegment = $this->_SplitTerm();
 	}
 	private function _SplitTerm(){
 		$pattern = "\s";

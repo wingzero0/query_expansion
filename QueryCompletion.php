@@ -5,7 +5,7 @@ require_once(dirname(__FILE__)."/QuerySpliter.php");
 require_once(dirname(__FILE__)."/OnlineQueryClassify.php");
 require_once(dirname(__FILE__)."/connection.php");
 require_once(dirname(__FILE__)."/NgramGenerate.php");
-
+require_once(dirname(__FILE__)."/QueryGoogle.php");
 mysql_select_db($database_cnn,$b95119_cnn);
 
 class QueryCompletion{
@@ -30,7 +30,8 @@ class QueryCompletion{
 		$this->threshold = 0.0;
 		$this->flowThreshold = 0.01;
 		$this->querySpliter = new QuerySpliter($q2);
-		$this->nGenerate = new NgramGenerate($q2);
+		//$this->nGenerate = new NgramGenerate($q2);
+		$this->nGenerate = new QuerySpliter($q2);
 	}
 	public function GetQueryConceptPool() {
 		$q1Concepts = $this->queryClassifier->GetConcept($this->q1);
@@ -65,12 +66,8 @@ class QueryCompletion{
 		return $conceptPool;
 	}
 	public function QueryGeneratingProb($c, $query){
-		//$this->querySpliter->ReplaceNewQuery($query);
-		//$words = $this->querySpliter->SplitTerm();
-		
-		//$nGenerate = new NgramGenerate($query);
 		$ret = $this->nGenerate->ReplaceNewQuery($query);
-		//echo "c:$c\n";
+		
 		$qWords = $this->nGenerate->GetQWords(); // for counting the number of term in NgramGenerate 
 		//The number of terms are different between querySpliter and NgramGenerate.
 		
@@ -180,9 +177,10 @@ class QueryCompletion{
 			foreach($newWords as $newWord){
 				$tmpQuery = mb_ereg_replace($whiteSpaces, " ", $orignalWords." ".$newWord);
 				$newQuery = mb_ereg_replace("^(\s+)", "", $tmpQuery);
-				//echo $newQuery."\n";
-				$prob = $this->QueryGeneratingProb($c2, $newQuery);
-				$queryPool[$c2][$newQuery] = $prob;
+				//$prob = $this->QueryGeneratingProb($c2, $newQuery); // it can replace by google filter
+				$num = $this->QueryFilter($newQuery);
+				//$queryPool[$c2][$newQuery] = $prob;
+				$queryPool[$c2][$newQuery] = $num;
 			}
 			arsort($queryPool[$c2]);
 		}
@@ -230,6 +228,21 @@ class QueryCompletion{
 			}
 		}
 		return $clusterS;
+	}	
+	public function QueryFilter($querys) {
+		// the input is and test querys' array.
+		// the output is number of the corresponding result page.
+		if (is_array($querys) == false){
+			$filter = new QueryGoogle($querys);
+			return $num = $filter->NumOfResults();
+		}else {
+			$nums = array();
+			foreach ($querys as $q){
+				$filter = new QueryGoogle($q);
+				$nums[$q] = $filter->NumOfResults();
+			}
+			return $nums;
+		}		
 	}	
 	public static function test(){
 		$obj = new QueryCompletion("haha", "schwab ha文 s", 
