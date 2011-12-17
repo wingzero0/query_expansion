@@ -175,9 +175,11 @@ class QueryCompletion{
 			if ( empty($newWords) ){
 				continue;
 			}
-			//foreach($newWords as $newWord => $value2){
+			
+			$whiteSpaces = "\s{2,}";// two or more spaces
 			foreach($newWords as $newWord){
-				$newQuery= $orignalWords." ".$newWord;
+				$tmpQuery = mb_ereg_replace($whiteSpaces, " ", $orignalWords." ".$newWord);
+				$newQuery = mb_ereg_replace("^(\s+)", "", $tmpQuery);
 				//echo $newQuery."\n";
 				$prob = $this->QueryGeneratingProb($c2, $newQuery);
 				$queryPool[$c2][$newQuery] = $prob;
@@ -215,7 +217,7 @@ class QueryCompletion{
 			$this->queryTB, $clusterNum, $wordPrefix, $wordPrefix);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
-		$pattern = sprintf("%s(.*)", $wordPrefix);
+		$pattern = sprintf("(^%s| %s)(.*)", $wordPrefix,$wordPrefix);
 		while($row = mysql_fetch_row($result)){
 			//$clusterS[$row[0]] = intval($row[1]);
 			

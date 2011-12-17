@@ -22,45 +22,71 @@ class LLR{
 	public $sTB;
 	public $llrTB;
 	public $N;
+	public $probTable;
+	public $coeffTable;
 	public function __construct($matrixTB, $singleTB, $llrTB, $N){
 		$this->mTB = $matrixTB;
 		$this->sTB = $singleTB;
 		$this->llrTB = $llrTB;
 		$this->N = $N;
 	}
-	public function binomialDistribution($n,$k, $p){
-		$p1 = pow($p, $k);
-		$p2 = pow( 1 - $p, $n - $k);
-		$coeff = $this->binomialCoeff($n, $k);
+	public function LogPow($p,$k){
+		$pStr = sprintf("%f", $p);
+		$kStr = sprintf("%d", $k);
+		if (isset($this->probTable[$pStr][$kStr])){
+			return $this->probTable[$pStr][$kStr];
+		}
+		$res = 0;
+		for ($i = 0;$i< $k;$i++){
+			$res+= log10($p);
+		}
+		$this->probTable[$pStr][$kStr] = $res;
+		return $res;
+	}
+	public function LogBinomialDistribution($n,$k, $p){
+		//$p1 = $this->LogPow($p,$k);
+		//$p2 = $this->LogPow( 1 - $p, $n - $k);
+		$p1 = pow($p,$k);
+		$p2 = pow(1-$p,$n - $k);
+		$coeff = $this->LogBinomialCoeff($n, $k);
 		//if (is_nan($coeff)){
 			//fprintf(STDERR, "\tn:%d\tk:%d\tcoeff:%lf\n", $n,$k,$coeff);
 		//}
-		//fprintf(STDERR, "\tn:%d\tk:%d\tcoeff:%lf\n", $n,$k,$coeff);
-		$prob = $coeff * $p1 * $p2;
+		//$prob = $coeff + $p1 + $p2;
+		$p12 = $p1 * $p2;
+		if ($p12 == 0.0){
+			$p12 = 0.00000001;
+		}
+		$prob = $coeff + log10($p12);
 		/*
 		if (is_nan($prob)){
 			fprintf(STDERR, "\tn:%d\tk:%d\tcoeff:%lf\tprob:%lf\n", $n,$k,$coeff, $prob);
 		}*/
 		return $prob;
 	}
-	public function binomialCoeff($n, $k){
+	public function LogBinomialCoeff($n, $k){
 		$j = 1;
-		$res = 1;
-
+		$res = 0;
+		
       if($k < 0 || $k > $n)
          return 0;
       if(($n - $k) < $k)
          $k = $n - $k;
 
+		$nStr = sprintf("%d", $n);
+		$kStr = sprintf("%d", $k);
+		
+		if (isset($this->coeffTable[$nStr][$kStr])){
+			return $this->coeffTable[$nStr][$kStr];
+		}		
+		
       while($j <= $k) {
-         $res *= $n;
-         $res /= $j;
+         $res += log10($n);
+         $res -= log10($j);
          $n--;$j++;
       }
-      //fprintf(STDERR, "\tres:%lf\n", $res);
+      $this->coeffTable[$nStr][$kStr] = $res;
       return $res;
-      //return log10($res);
-
 	}
 	public function GetCount(){
 		
@@ -84,9 +110,9 @@ class LLR{
 		$llrArray = array();
 		$counter = 0;
 		while($row = mysql_fetch_row($result)){
-			if ($counter % 1000 == 0){
-				echo $counter."\n";
-			}
+			//if ($counter % 1000 == 0){
+				//echo $counter."\n";
+			//}
 			//$w1 = $row[0];
 			//$w2 = $row[1];
 			$w1 = addslashes($row[0]);
@@ -111,9 +137,11 @@ class LLR{
 			$ret = $this->CalculateLLR($count12, $count1, $count2, $this->N);
 			if ($ret["flag"] == true){
 				$this->LLRSingleInsert($w1,$w2,$ret["logLLR"]);
+			}else{
+				fprintf(STDERR, "get nan:w1=".$w1."\tw2=".$w2."\n");
 			}
 			//$llrArray[$w1][$w2] = $llr;
-			$counter++;
+			//$counter++;
 		}
 		return $llrArray;
 	}
@@ -128,28 +156,28 @@ class LLR{
 		$ret["flag"] = false;
 		//fprintf(STDERR, "\tc12:%d\tc1:%d\tc2:%d\tN:%d\n", $count12,$count1,$count2,$N);
 		$p = $count2 / $N;
-		$H11 = $this->binomialDistribution($count1, $count12, $p);
-		$H12 = $this->binomialDistribution($N - $count1, $count2 - $count12, $p);
+		$H11 = $this->LogBinomialDistribution($count1, $count12, $p);
+		$H12 = $this->LogBinomialDistribution($N - $count1, $count2 - $count12, $p);
 		//fprintf(STDERR, "\tH11:%lf\tH12:%lf\n", $H11,$H12);
 		
-		if (is_nan($H11) || is_nan($H12) || $H11 == 0 || $H12 == 0){
+		if (is_nan($H11) || is_nan($H12)){
 			// get INF
 			return $ret;
 		}
-		$logH1 = log10($H11) + log10($H12);
+		$logH1 = $H11 + $H12;
 			
 		$p1 = $count12 / $count1;
 		$p2 = ($count2-$count12)/($N-$count1);
 		
-		$H21 = $this->binomialDistribution($count1, $count12, $p1);
-		$H22 = $this->binomialDistribution($N - $count1, $count2 - $count12, $p2);
+		$H21 = $this->LogBinomialDistribution($count1, $count12, $p1);
+		$H22 = $this->LogBinomialDistribution($N - $count1, $count2 - $count12, $p2);
 		//fprintf(STDERR, "\tH21:%lf\tH22:%lf\n", $H21,$H22);
 		
-		if (is_nan($H21) || is_nan($H22) || $H21 == 0 || $H22 == 0 ){
+		if (is_nan($H21) || is_nan($H22)){
 			// get INF
 			return $ret;
 		}
-		$logH2 = log10($H21) + log10($H22);
+		$logH2 = $H21 + $H22;
 		
 			
 		//fprintf(STDERR, "\tlogH1:%lf\tlogH2:%lf\n", $logH1,$logH2);
