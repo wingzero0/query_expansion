@@ -12,6 +12,7 @@ class QueryCompletion{
 	public $wordTB;
 	public $queryTB;
 	public $clusterFlowTB;
+	public $llrTB;
 	public $q1;
 	public $q2;
 	public $queryClassifier;
@@ -19,15 +20,17 @@ class QueryCompletion{
 	public $flowThreshold;
 	public $querySpliter;
 	public $nGenerate;
-	public function __construct($q1, $q2, $qTB, $wTB,$cFlowTB){
+	public function __construct($q1, $q2, $qTB, $wTB,$cFlowTB,$llrTB){
 		$this->q1 = addslashes($q1);
 		$this->q2 = addslashes($q2);
 		$this->queryClassifier = new OnlineQueryClassify($qTB);
 		$this->queryTB = $qTB;
 		$this->wordTB = $wTB;
 		$this->clusterFlowTB = $cFlowTB;
+		$this->llrTB = $llrTB;
 		//$this->threshold = 0.00001;
 		$this->threshold = 0.0;
+		$this->llrThreshold = -1.0;
 		$this->flowThreshold = 0.01;
 		$this->querySpliter = new QuerySpliter($q2);
 		//$this->nGenerate = new NgramGenerate($q2);
@@ -166,8 +169,11 @@ class QueryCompletion{
 			}
 		}
 		foreach ($uniqueC2 as $c2 => $value){
-			//$newWords = $this->GetWordInConcept($c2, $words["partial"]);
-			$newWords = $this->GetWordPhraseInConcept($c2, $words["partial"]);
+			// WordInConcept
+			$newWords = $this->GetWordInConcept($c2, $words["partial"]);
+			
+			// PhraseInConcept 
+			//$newWords = $this->GetWordPhraseInConcept($c2, $words["partial"]);
 			//the new words may be duplicate in differnt c2;
 			if ( empty($newWords) ){
 				continue;
@@ -176,11 +182,19 @@ class QueryCompletion{
 			$whiteSpaces = "\s{2,}";// two or more spaces
 			foreach($newWords as $newWord){
 				$tmpQuery = mb_ereg_replace($whiteSpaces, " ", $orignalWords." ".$newWord);
-				$newQuery = mb_ereg_replace("^(\s+)", "", $tmpQuery);
-				//$prob = $this->QueryGeneratingProb($c2, $newQuery); // it can replace by google filter
-				$num = $this->QueryFilter($newQuery);
-				//$queryPool[$c2][$newQuery] = $prob;
-				$queryPool[$c2][$newQuery] = $num;
+				$tmpQuery = mb_ereg_replace("^(\s+)", "", $tmpQuery);
+				$newQuerys = $this->QueryReplaceAndCompletion($tmpQuery, $c2);
+				
+				if (!empty($newQuerys)){
+					//print_r($newQuerys);
+					foreach($newQuerys as $newQuery){
+						$prob = $this->QueryGeneratingProb($c2, $newQuery); // it can replace by google filter				
+						//$num = $this->QueryFilter($newQuery);
+						$queryPool[$c2][$newQuery] = $prob;
+						//$queryPool[$c2][$newQuery] = $num;
+					}
+				}
+				
 			}
 			arsort($queryPool[$c2]);
 		}
@@ -194,14 +208,14 @@ class QueryCompletion{
 	public function GetWordInConcept($clusterNum, $prefix){
 		// return a list of words start the input prefix
 		$sql = sprintf(
-			"select `Word`,`NumOfWord` from `%s`
+			"select `Word` from `%s`
 			where `ClusterNum` = %d and `Word` like '%s%%' 
 			order by `NumOfWord` desc", 
 			$this->wordTB, $clusterNum, $prefix);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
 		while($row = mysql_fetch_row($result)){
-			$clusterS[$row[0]] = intval($row[1]);
+			$clusterS[]  = addslashes($row[0] );
 		}
 		return $clusterS;
 	}
@@ -243,7 +257,93 @@ class QueryCompletion{
 			}
 			return $nums;
 		}		
-	}	
+	}
+	public function QueryReplaceAndCompletion($targetQ, $c){
+		echo "targetQ:\t".$targetQ."\n";
+		$querys = $this->GetConceptQuerys($c);
+		$newQs = array();
+		$newQs[0] = $targetQ;
+		if (empty($querys)){
+			//echo "empty querys set:".$c."\n";
+			return $newQs;
+		}
+		foreach($querys as $q =>$v){
+			$complement = $this->GetComplementTerm($targetQ,$q);
+			if (!empty($coplement)){
+				$newQs[] = $targetQ . " " .$complement;
+				//echo $complement."\n";
+			}			
+		}
+		return $newQs;
+	}
+	protected function GetComplementTerm($small, $big){
+		// return the complement terms from $big if $small and $big have some overlapped. 
+		// if one word appears in $small, other word appears in $big 
+		// and they have a higher llr, they are considered as same meaning.
+		// They are also considered as overlapping. 
+		// This function will return a string concatenated with the non-overlapping words in $big; 
+		$pattern = " ";
+		$bTerms = mb_split($pattern, $big);
+		$sTerms = mb_split($pattern, $small);
+		
+		$cTerms = array(); // complement terms
+		for ($i = 0; $i< count($cTerms); $i++){
+			$cTerms[$bTerms[$i]] = 1; // put all terms in bTerms into complement terms as the candidates 
+		}
+		$flag = false;
+		foreach($bTerms as $b){
+			foreach ($sTerms as $s){
+				if ($b == $s){
+					$flag = true; // get overlapping
+					if (isset($cTerms[$b])){
+						unset($cTerms[$b]); // drop the duplicated terms
+					}
+					continue;
+				}
+				$sql = sprintf(
+					"select `LLR` from `%s`
+					where ((`Word1` = '%s' and `Word2` = '%s') OR (`Word1` = '%s' and `Word2` = '%s')) 
+					and `LLR` != NULL and`LLR` < %f;
+					", 
+					$this->llrTB, $b,$s, $s, $b,$this->llrThreshold);
+				//echo $sql."\n";
+				$result = mysql_query($sql) or die($sql."\n".mysql_error());
+				if (mysql_num_rows($result)>0){
+					echo "get replace:".$b."\t".$s."\n";
+					$flag = true;
+					if (isset($cTerms[$b])){
+						unset($cTerms[$b]); // drop the duplicated terms
+					}
+				}
+			}
+		}
+		if ($flag == true && !empty($cTerms)){
+			$keys = array_keys($cTerms);
+			$complement = $keys[0];
+			for($i = 1;$i< count($keys) ;$i++){
+				$complement .= " ".$keys[$i];
+			}
+			echo $small."\t".$big."\t"."get complement:".$complement."\n";
+			return $complement;
+		}else{
+			// no overlapping, no complement issue;
+			return NULL;
+		}
+	}
+	protected function GetConceptQuerys($c){
+		// return a list of Querys in the given concept (cluster)
+		$sql = sprintf(
+			"select `Query`, `NumOfQuery` from `%s`
+			where `ClusterNum` = %d
+			order by `NumOfQuery`", 
+			$this->queryTB, $c);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$clusterS = array();
+		while($row = mysql_fetch_row($result)){
+			$clusterS[ addslashes($row[0]) ] = intval($row[1]);
+		}
+		return $clusterS;
+	}
 	public static function test(){
 		$obj = new QueryCompletion("haha", "schwab ha文 s", 
 			"QueryClusterTest", "WordClusterTest", "ClusterFlowProb");
