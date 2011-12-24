@@ -86,7 +86,7 @@ class WordConceptInsertDB extends QueryConceptInsertDB{
 
 class WordConceptNumOfQuery extends FileProcessUtility{
 	public $fp;
-	public $querys;
+	public $words;
 	public $targetTB;
 	public function __construct($para){
 		//mb_internal_encoding("UTF-8");
@@ -104,11 +104,11 @@ class WordConceptNumOfQuery extends FileProcessUtility{
 		if (isset($para["TB"])){
 			$this->targetTB = $para["TB"];
 		}else {
-			$this->targetTB = "QueryCluster";
+			$this->targetTB = "WordCluster";
 		}
 	}
 	public function ParseSession(){
-		$this->querys = array();
+		$this->words = array();
 		while (!feof($this->fp)){
 			$line = fgets($this->fp);
 			$line = $this->cut_last_newline($line);
@@ -129,29 +129,28 @@ class WordConceptNumOfQuery extends FileProcessUtility{
 					continue;
 				}
 				$q = addslashes($list[$index]);
-				if (!isset($this->querys[$q])){
-					$this->querys[$q] = 0;
+				if (!isset($this->words[$q])){
+					$this->words[$q] = 0;
 				}
-				$this->querys[$q] += 1;
+				$this->words[$q] += 1;
 			}
 		}
 		fclose($this->fp);
 	}
 	public function UpdateDB(){
-		echo "total query:".count($this->querys)."\n";
+		echo "total query:".count($this->words)."\n";
 		$counter = 0;
-		foreach ($this->querys as $q => $v){
-			if ($counter % 10000 == 0){
-				//echo $counter."\t".$q."\n";
-				echo $counter;
-			}
+		foreach ($this->words as $q => $v){
+			//if ($counter % 10000 == 0){
+				//echo $counter;
+			//}
 			$sql = sprintf(
-				"update `%s` set `NumOfQuery` = %d where `query` like '%s'",
+				"update `%s` set `NumOfQuery` = %d where `query` = '%s'",
 				$this->targetTB, $v, $q
 			);
 			//echo $sql."\n";
 			$result = mysql_query($sql) or die($sql."\n".mysql_error());
-			$counter++;
+			//$counter++;
 		}
 	}
 	public function Run(){

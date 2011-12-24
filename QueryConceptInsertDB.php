@@ -43,7 +43,8 @@ class QueryConceptInsertDB extends FileProcessUtility{
 	}
 	public function ParseClusterNumberInFileName($filename){
 		$pattern = "/(.*?)\.txt/";
-		$ret = preg_match($pattern, $filename, $matches);
+		$name = basename($filename);
+		$ret = preg_match($pattern, $name, $matches);
 		if ($ret <= 0) {
 			fprintf($this->err_fp, "filename not match formate:%s\n", $filename);
 			return -1;
@@ -157,16 +158,17 @@ class QueryConceptNumOfQuery extends FileProcessUtility{
 		foreach ($this->querys as $q => $v){
 			if ($counter % 10000 == 0){
 				//echo $counter."\t".$q."\n";
-				echo $counter;
+				echo $counter."\n";
 			}
 			$sql = sprintf(
-				"update `%s` set `NumOfQuery` = %d where `query` like '%s'",
+				"update `%s` set `NumOfQuery` = %d where `Query` = '%s'",
 				$this->targetTB, $v, $q
 			);
 			//echo $sql."\n";
 			$result = mysql_query($sql) or die($sql."\n".mysql_error());
 			$counter++;
 		}
+		echo $sql."\n";
 	}
 	public function Run(){
 		$this->ParseSession();

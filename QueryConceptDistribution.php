@@ -6,6 +6,8 @@
 // Then it will have a number which indicated the number of query of a cluster.
 // Then it has a space.
 // The cluster name is written at the end of line.
+//
+// php QueryConceptDistribution.php line.txt > output.csv
 
 class QueryConceptDistribution{
 	public $fp;
@@ -35,10 +37,10 @@ class QueryConceptDistribution{
 		ksort($dist);
 		return $dist;
 	}
-	public function test(){
-		$obj = new QueryConceptDistribution("line.txt");
+	public function test($filename){
+		$obj = new QueryConceptDistribution($filename);
 		$obj->Distribution();	
 	}
 }
-QueryConceptDistribution::test();
+QueryConceptDistribution::test($argv[1]);
 ?>

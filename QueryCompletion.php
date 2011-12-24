@@ -16,11 +16,17 @@ class QueryCompletion{
 	public $q1;
 	public $q2;
 	public $queryClassifier;
-	public $threshold;
-	public $flowThreshold;
+	public $threshold; // for QueryConcept and Query Generating Prob (in fuction GetQueryConpetPool)
+	public $flowThreshold; // for Query Concept flow Prob
 	public $querySpliter;
 	public $nGenerate;
-	public function __construct($q1, $q2, $qTB, $wTB,$cFlowTB,$llrTB){
+	public $alpha; // for Query Generating Prob -- N gram
+	public $beta; // for Query Generating Prob -- N - 1 gram
+	public $gamma; //for Query Generating Prob -- N - 2 gram
+	public function __construct($q1, $q2, $qTB, $wTB,$cFlowTB,$llrTB,
+		$flowThreshold, $threshold, $llrThreshold,
+		$alpha, $beta, $gamma)
+	{
 		$this->q1 = addslashes($q1);
 		$this->q2 = addslashes($q2);
 		$this->queryClassifier = new OnlineQueryClassify($qTB);
@@ -29,19 +35,21 @@ class QueryCompletion{
 		$this->clusterFlowTB = $cFlowTB;
 		$this->llrTB = $llrTB;
 		//$this->threshold = 0.00001;
-		$this->threshold = 0.0;
-		$this->llrThreshold = -1.0;
-		$this->flowThreshold = 0.01;
+		$this->threshold = $threshold;//0.0 output everything
+		$this->llrThreshold = $llrThreshold;//-0.1 is too low
+		$this->flowThreshold = $flowThreshold;//0.01 may be ok
 		$this->querySpliter = new QuerySpliter($q2);
-		//$this->nGenerate = new NgramGenerate($q2);
 		$this->nGenerate = new QuerySpliter($q2);
+		$this->alpha = $alpha;
+		$this->beta = $beta;
+		$this->gamma = $gamma;
 	}
 	public function GetQueryConceptPool() {
 		$q1Concepts = $this->queryClassifier->GetConcept($this->q1);
 		// the return value of GetConcept is an array of concept prob.
 		// the index of the array is concept number, 
 		// the value of the array is prob of q1 being in that concept
-		
+
 		// Get the pool of concept
 		$conceptPool = array();
 		foreach ($q1Concepts as $c1 => $probC1){
@@ -70,17 +78,17 @@ class QueryCompletion{
 	}
 	public function QueryGeneratingProb($c, $query){
 		$ret = $this->nGenerate->ReplaceNewQuery($query);
-		
+
 		$qWords = $this->nGenerate->GetQWords(); // for counting the number of term in NgramGenerate 
 		//The number of terms are different between querySpliter and NgramGenerate.
-		
+
 		$n = count($qWords);
 		$ngrams = $this->nGenerate->GetNgrams($n);
 		$ngrams1 = $this->nGenerate->GetNgrams($n -1);
 		//print_r($ngrams1);
 		$ngrams2 = $this->nGenerate->GetNgrams($n -2);
 		//print_r($ngrams2);
-		 
+
 		$prob = $this->NgramGeneratingProb($c, $ngrams); // the whole one
 		//echo "whole:".$prob."\n";
 		if ($ngrams1 != null){
@@ -107,7 +115,7 @@ class QueryCompletion{
 				$sum += intval($row[0]);
 			}
 		}
-		
+
 		$sql = sprintf(
 			"select sum(`NumOfQuery`) from `%s`
 			where `ClusterNum` = %d
@@ -133,7 +141,7 @@ class QueryCompletion{
 		// return a list of prob that start from c1
 		// the index of the array is cluster2's number, 
 		// the value of the array is prob of the corresponding flow
-		
+
 		$sql = sprintf(
 			"select `Cluster2`,`Prob` from `%s`
 			where `Cluster1` = %d and `prob` > %lf 
@@ -171,20 +179,20 @@ class QueryCompletion{
 		foreach ($uniqueC2 as $c2 => $value){
 			// WordInConcept
 			$newWords = $this->GetWordInConcept($c2, $words["partial"]);
-			
+
 			// PhraseInConcept 
 			//$newWords = $this->GetWordPhraseInConcept($c2, $words["partial"]);
 			//the new words may be duplicate in differnt c2;
 			if ( empty($newWords) ){
 				continue;
 			}
-			
+
 			$whiteSpaces = "\s{2,}";// two or more spaces
 			foreach($newWords as $newWord){
 				$tmpQuery = mb_ereg_replace($whiteSpaces, " ", $orignalWords." ".$newWord);
 				$tmpQuery = mb_ereg_replace("^(\s+)", "", $tmpQuery);
 				$newQuerys = $this->QueryReplaceAndCompletion($tmpQuery, $c2);
-				
+
 				if (!empty($newQuerys)){
 					//print_r($newQuerys);
 					foreach($newQuerys as $newQuery){
@@ -194,11 +202,11 @@ class QueryCompletion{
 						//$queryPool[$c2][$newQuery] = $num;
 					}
 				}
-				
+
 			}
 			arsort($queryPool[$c2]);
 		}
-		
+
 		// the sorting prob above may be wrong.
 		// because that it only consider the final term of the prob chain.
 		// if we need to calculate the precise prob, we should consider 
@@ -232,7 +240,7 @@ class QueryCompletion{
 		$pattern = sprintf("(^%s| %s)(.*)", $wordPrefix,$wordPrefix);
 		while($row = mysql_fetch_row($result)){
 			//$clusterS[$row[0]] = intval($row[1]);
-			
+
 			$ret = mb_eregi($pattern, $row[0], $matches);
 			//$ret = mb_ereg($pattern, $row[0], $matches);
 			if ($ret === false){
@@ -259,17 +267,15 @@ class QueryCompletion{
 		}		
 	}
 	public function QueryReplaceAndCompletion($targetQ, $c){
-		echo "targetQ:\t".$targetQ."\n";
 		$querys = $this->GetConceptQuerys($c);
 		$newQs = array();
 		$newQs[0] = $targetQ;
 		if (empty($querys)){
-			//echo "empty querys set:".$c."\n";
 			return $newQs;
 		}
 		foreach($querys as $q =>$v){
 			$complement = $this->GetComplementTerm($targetQ,$q);
-			if (!empty($coplement)){
+			if (!empty($complement)){
 				$newQs[] = $targetQ . " " .$complement;
 				//echo $complement."\n";
 			}			
@@ -282,12 +288,13 @@ class QueryCompletion{
 		// and they have a higher llr, they are considered as same meaning.
 		// They are also considered as overlapping. 
 		// This function will return a string concatenated with the non-overlapping words in $big; 
+		//echo $small."\t".$big."\t"."calculating complement:\n";
 		$pattern = " ";
 		$bTerms = mb_split($pattern, $big);
 		$sTerms = mb_split($pattern, $small);
-		
+
 		$cTerms = array(); // complement terms
-		for ($i = 0; $i< count($cTerms); $i++){
+		for ($i = 0; $i< count($bTerms); $i++){
 			$cTerms[$bTerms[$i]] = 1; // put all terms in bTerms into complement terms as the candidates 
 		}
 		$flag = false;
@@ -304,29 +311,32 @@ class QueryCompletion{
 					"select `LLR` from `%s`
 					where ((`Word1` = '%s' and `Word2` = '%s') OR (`Word1` = '%s' and `Word2` = '%s')) 
 					and `LLR` != NULL and`LLR` < %f;
-					", 
+				", 
 					$this->llrTB, $b,$s, $s, $b,$this->llrThreshold);
 				//echo $sql."\n";
 				$result = mysql_query($sql) or die($sql."\n".mysql_error());
 				if (mysql_num_rows($result)>0){
-					echo "get replace:".$b."\t".$s."\n";
+					echo "get llr replace:".$b."\t".$s."\n";
 					$flag = true;
 					if (isset($cTerms[$b])){
 						unset($cTerms[$b]); // drop the duplicated terms
 					}
+					continue;
 				}
 			}
 		}
+
 		if ($flag == true && !empty($cTerms)){
 			$keys = array_keys($cTerms);
 			$complement = $keys[0];
 			for($i = 1;$i< count($keys) ;$i++){
 				$complement .= " ".$keys[$i];
 			}
-			echo $small."\t".$big."\t"."get complement:".$complement."\n";
+			//echo $small."\t".$big."\t"."get complement:".$complement."\n";
 			return $complement;
 		}else{
 			// no overlapping, no complement issue;
+			//echo "no overlapping or empty cTerms\n";
 			return NULL;
 		}
 	}
@@ -353,7 +363,7 @@ class QueryCompletion{
 			"QueryClusterTest", "WordClusterTest", "ClusterFlowProb");
 		$ret = $obj->GetQueryCombination();
 		print_r($ret);
-		
+
 		//$ret = $obj->GetWordInConcept(1, "sw");
 		//print_r($ret);
 	}
