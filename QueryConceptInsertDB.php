@@ -56,13 +56,14 @@ class QueryConceptInsertDB extends FileProcessUtility{
 	public function ParseInput(){
 		while (!feof($this->c_fp)){
 			$line = fgets($this->c_fp);
-			$line = $this->cut_last_newline($line);
+			//$line = $this->cut_last_newline($line);
+			$line = trim($line);
 			if (empty($line)){
 				continue;
 			}
-			$this->querys[] = $this->convert_safe_str($line);
+			$this->querys[$this->convert_safe_str($line)] = 0;
 		}
-		sort($this->querys);
+		ksort($this->querys);
 	}
 	public function run(){
 		echo $this->clusterNum."\n";
@@ -84,7 +85,7 @@ class QueryConceptInsertDB extends FileProcessUtility{
 	) ENGINE = MYISAM", $this->targetTB);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 
-		foreach($this->querys as $i => $q){
+		foreach($this->querys as $q => $v){
 			$sql = sprintf(
 				"insert into `%s` (`Query`, `ClusterNum`, `SimValue`) 
 				values('%s', %d, 1.0)", $this->targetTB, $q, $this->clusterNum);
@@ -143,7 +144,8 @@ class QueryConceptNumOfQuery extends FileProcessUtility{
 					echo "index not set $index\nline format error:$line\n";
 					continue;
 				}
-				$q = addslashes($list[$index]);
+				//$q = addslashes($list[$index]);
+				$q = addslashes(trim($list[$index]));
 				if (!isset($this->querys[$q])){
 					$this->querys[$q] = 0;
 				}
@@ -168,7 +170,7 @@ class QueryConceptNumOfQuery extends FileProcessUtility{
 			$result = mysql_query($sql) or die($sql."\n".mysql_error());
 			$counter++;
 		}
-		echo $sql."\n";
+		//echo $sql."\n";
 	}
 	public function Run(){
 		$this->ParseSession();

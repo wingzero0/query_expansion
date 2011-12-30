@@ -35,10 +35,10 @@ class LLR{
 		return $res;
 	}
 	public function LogBinomialDistribution($n,$k, $p){
-		if ($p == 0.0){
+		//if ($p == 0.0){
 			//echo "$p = 0.0\n";
-			return log($p); // let it get INF 
-		}
+			//return log($p); // let it get INF 
+		//}
 		//$p1 = pow($p,$k);
 		//$p2 = pow(1-$p,$n - $k);
 		//$prob = log10($p1) + log10($p2);
@@ -50,8 +50,10 @@ class LLR{
 	public function GetCount(){
 		
 		$sql = sprintf(
-			"select `word`, `value`
-			from `msn_click_log`.`%s`",
+			"select `word`, sum(`value`)
+			from `msn_click_log`.`%s`
+			group by `word`
+			order by `word`",
 			$this->sTB);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$singleTerm = array();
@@ -60,7 +62,8 @@ class LLR{
 			$singleTerm[$word] = intval($row[1]);
 		}
 			
-			
+		//print_r($singleTerm);
+		//exit(0);	
 		$sql = sprintf(
 			"select `w1`, `w2`, `value`
 			from `msn_click_log`.`%s`",
@@ -76,7 +79,7 @@ class LLR{
 			//$w2 = $row[1];
 			$w1 = addslashes($row[0]);
 			$w2 = addslashes($row[1]);
-			$count12 = $row[2];
+			$count12 = intval($row[2]);
 			
 			if ( isset($singleTerm[$w1]) ){
 				$count1 = $singleTerm[$w1];
@@ -92,8 +95,20 @@ class LLR{
 				continue;
 			}
 			
-			//fprintf(STDERR, "w1:%s\tw2:%s\n", $w1, $w2);
-			$llr = $this->CalculateLLR($count12, $count1, $count2, $this->N);
+			if ($count1 < $count12 || $count2 < $count12)  
+			{
+				fprintf(STDERR, "w1:%s\tw2:%s(count1 = %d, count2 = %d count12 = %d)\n", 
+					$w1, $w2, $count1, $count2, $count12);
+				continue;
+			}
+			
+			if ($count1 == 0 || $count2 == 0 || $count12 ==0 || 
+				$count1 == $count12 || $count2 == $count12 ||
+				($count2-$count12) == ($this->N -$count1) || $this->N == $count1){
+				$llr = log10(0); //generate INF	
+			}else{
+				$llr = $this->CalculateLLR($count12, $count1, $count2, $this->N);
+			}
 			
 			$this->LLRSingleInsert($w1,$w2,$llr);
 			
@@ -110,7 +125,6 @@ class LLR{
 		// H2: p(w2 | w1) != p(w2 | not w1); p1 = c12/c1; p2 = (c2-c12)/(N-c1)
 		// L(H2) = b(c1;c12, p1) * b(n-c1;c2-c12, p2)
 		
-		//fprintf(STDERR, "\tc12:%d\tc1:%d\tc2:%d\tN:%d\n", $count12,$count1,$count2,$N);
 		$p = $count2 / $N;
 		$H11 = $this->LogBinomialDistribution($count1, $count12, $p);
 		$H12 = $this->LogBinomialDistribution($N - $count1, $count2 - $count12, $p);

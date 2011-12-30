@@ -3,7 +3,7 @@
 //php run_QueryCompletion.php -q1 "haha" -q2 "schwab ha文 s" -qTB QueryCluster_3
 // -wTB WordCluster_3 -cFlowTB ClusterFlowProb_3 -llrTB llr_test_3
 // -threshlod 0.0 -flowThreshold 0.01 -llrThreshold -0.1
-// -alpha 0.5 -beta 0.3 gamma 0.1
+// -alpha 0.5 -beta 0.3 -gamma 0.1
 require("/home/b95119/query_expansion/QueryCompletion.php");
 
 $para = ParameterParser($argc, $argv);

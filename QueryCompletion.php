@@ -61,7 +61,7 @@ class QueryCompletion{
 			}
 			foreach ($flowProb as $c2 => $prob){
 				$prob2 = $this->QueryGeneratingProb($c2, $this->q2);
-				echo "c1 = $c1, c2 = $c2 prob1 = $prob prob2 = $prob2\n";
+				fprintf(STDERR, "c1 = $c1, c2 = $c2 prob1 = $prob prob2 = $prob2\n");
 				if ($prob * $prob2 > $this->threshold){
 					//$conceptPool[$c1][$c2] = $probC1 * $prob * $prob2; 
 					$conceptPool[$c1][$c2] = $prob * $prob2; // ignore the ProbC1 in the first version
@@ -70,7 +70,8 @@ class QueryCompletion{
 			if (isset($conceptPool[$c1])){
 				arsort($conceptPool[$c1]);
 			}else{
-				fprintf(STDERR,"the c1 following is empty\n");
+				//fprintf(STDERR,"the c1 following is empty\n");
+				fprintf(STDOUT,"the c1 following is empty\n");
 			}
 		}
 		//arsort($conceptPool[$c1]);	
@@ -282,51 +283,51 @@ class QueryCompletion{
 		}
 		return $newQs;
 	}
-	protected function GetComplementTerm($small, $big){
+	protected function GetComplementTerm($query, $ref){
 		// return the complement terms from $big if $small and $big have some overlapped. 
-		// if one word appears in $small, other word appears in $big 
-		// and they have a higher llr, they are considered as same meaning.
-		// They are also considered as overlapping. 
+		// If one word appears in $small, other word appears in $big 
+		// and they have the similar LLR sets, they are considered as same meaning.
+		// They are also considered as overlapping(can be replaced by each other). 
 		// This function will return a string concatenated with the non-overlapping words in $big; 
 		//echo $small."\t".$big."\t"."calculating complement:\n";
 		$pattern = " ";
-		$bTerms = mb_split($pattern, $big);
-		$sTerms = mb_split($pattern, $small);
-
+		$qTerms = mb_split($pattern, $query);
+		$rTerms = mb_split($pattern, $ref);		
+		$qLLRSet = $this->GetLLRSet($qTerms);
+		
 		$cTerms = array(); // complement terms
-		for ($i = 0; $i< count($bTerms); $i++){
-			$cTerms[$bTerms[$i]] = 1; // put all terms in bTerms into complement terms as the candidates 
-		}
-		$flag = false;
-		foreach($bTerms as $b){
-			foreach ($sTerms as $s){
-				if ($b == $s){
-					$flag = true; // get overlapping
-					if (isset($cTerms[$b])){
-						unset($cTerms[$b]); // drop the duplicated terms
+		for ($i = 0; $i< count($rTerms); $i++){
+			$cTerms[$rTerms[$i]] = 1; // put all terms in bTerms into complement terms as the candidates 
+		}		
+		$overlap = false;
+		
+		// find duplicated terms
+		foreach ($qTerms as $q){
+			foreach ($rTerms as $r){
+				if ($q == $r){
+					$overlap = true; // get overlapping
+					if (isset($cTerms[$r])){
+						unset($cTerms[$r]); // drop the duplicated terms
 					}
-					continue;
-				}
-				$sql = sprintf(
-					"select `LLR` from `%s`
-					where ((`Word1` = '%s' and `Word2` = '%s') OR (`Word1` = '%s' and `Word2` = '%s')) 
-					and `LLR` != NULL and`LLR` < %f;
-				", 
-					$this->llrTB, $b,$s, $s, $b,$this->llrThreshold);
-				//echo $sql."\n";
-				$result = mysql_query($sql) or die($sql."\n".mysql_error());
-				if (mysql_num_rows($result)>0){
-					echo "get llr replace:".$b."\t".$s."\n";
-					$flag = true;
-					if (isset($cTerms[$b])){
-						unset($cTerms[$b]); // drop the duplicated terms
-					}
-					continue;
 				}
 			}
 		}
+		
+		// find duplicated terms with LLRSet
+		foreach ($rTerms as $r){
+			$rLLR = $this->_GetLLRSet($r);
+			foreach ($rLLR as $i => $v){
+				if ( isset($qLLRSet[$i]) ){
+					fprintf(STDERR, "get replacement(r=%s,llrW=%s)\n", $r,$i);
+					$overlap = true; // get overlapping
+					if (isset($cTerms[$r])){
+						unset($cTerms[$r]); // drop the duplicated terms
+					}
+				}	
+			}
+		}
 
-		if ($flag == true && !empty($cTerms)){
+		if ($overlap == true && !empty($cTerms)){
 			$keys = array_keys($cTerms);
 			$complement = $keys[0];
 			for($i = 1;$i< count($keys) ;$i++){
@@ -339,6 +340,50 @@ class QueryCompletion{
 			//echo "no overlapping or empty cTerms\n";
 			return NULL;
 		}
+	}
+	protected function GetLLRSet($words){
+		if (count($words) == 0){
+			fprintf(STDERR,"input words is empty\n");
+			return NULL;
+		}
+		$poolSet = array();
+		foreach($words as $w){
+			$tmpSet = $this->_GetLLRSet($w);// may be empty
+			if (empty($tmpSet)){
+				continue;
+			}
+			foreach ($tmpSet as $i => $v){
+				if ( !isset($poolSet[$i]) ){
+					$poolSet[$i] = 0;
+				}
+				$poolSet[$i] += 1;
+			}
+		}
+		//find the most freq words in $poolSet
+		$max = 0;
+		$LLRSet = array(); // init
+		foreach ($poolSet as $w => $v){
+			if ($max < $v){
+				$LLRSet = array(); // clear;
+				$LLRSet[0] = $w;
+			}else if ($max = $v){
+				$LLRSet[] = $w;// add more
+			}
+		}
+		return $LLRSet;
+	}
+	protected function _GetLLRSet($word){
+		$sql = sprintf(
+			"select `Word1`, `LLR` from `%s`
+			where `Word2` = '%s'
+			and (`LLR` is NULL or `LLR` < %f)", 
+			$this->llrTB, $word,$this->llrThreshold);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$LLRSet = array();
+		while($row = mysql_fetch_row($result)){
+			$LLRSet[addslashes($row[0])] = doubleval($row[1]);
+		}
+		return $LLRSet;
 	}
 	protected function GetConceptQuerys($c){
 		// return a list of Querys in the given concept (cluster)
