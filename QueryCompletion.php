@@ -292,7 +292,9 @@ class QueryCompletion{
 		//echo $small."\t".$big."\t"."calculating complement:\n";
 		$pattern = " ";
 		$qTerms = mb_split($pattern, $query);
-		$rTerms = mb_split($pattern, $ref);		
+		$rTerms = mb_split($pattern, $ref);
+		fprintf(STDERR, "query=%s,ref=%s\n", $query,$ref);
+						
 		$qLLRSet = $this->GetLLRSet($qTerms);
 		
 		$cTerms = array(); // complement terms
@@ -316,9 +318,9 @@ class QueryCompletion{
 		// find duplicated terms with LLRSet
 		foreach ($rTerms as $r){
 			$rLLR = $this->_GetLLRSet($r);
-			foreach ($rLLR as $i => $v){
-				if ( isset($qLLRSet[$i]) ){
-					fprintf(STDERR, "get replacement(r=%s,llrW=%s)\n", $r,$i);
+			foreach ($rLLR as $w => $v){
+				if ( isset($qLLRSet[$w]) ){
+					fprintf(STDERR, "get replacement(r=%s,llrW=%s)\n", $r,$w);
 					$overlap = true; // get overlapping
 					if (isset($cTerms[$r])){
 						unset($cTerms[$r]); // drop the duplicated terms
@@ -342,6 +344,8 @@ class QueryCompletion{
 		}
 	}
 	protected function GetLLRSet($words){
+		// the return value is an associative array with words as index.
+		// the corresponding value is the times of that word appears in different set. 
 		if (count($words) == 0){
 			fprintf(STDERR,"input words is empty\n");
 			return NULL;
@@ -365,9 +369,9 @@ class QueryCompletion{
 		foreach ($poolSet as $w => $v){
 			if ($max < $v){
 				$LLRSet = array(); // clear;
-				$LLRSet[0] = $w;
+				$LLRSet[$w] = $v;
 			}else if ($max = $v){
-				$LLRSet[] = $w;// add more
+				$LLRSet[$w] = $v;// add more
 			}
 		}
 		return $LLRSet;
