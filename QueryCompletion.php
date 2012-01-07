@@ -23,6 +23,7 @@ class QueryCompletion{
 	public $alpha; // for Query Generating Prob -- N gram
 	public $beta; // for Query Generating Prob -- N - 1 gram
 	public $gamma; //for Query Generating Prob -- N - 2 gram
+	protected $flowProb;// the max prob from any c1 of q1 to a specify c2
 	public function __construct($q1, $q2, $qTB, $wTB,$cFlowTB,$llrTB,
 		$flowThreshold, $threshold, $llrThreshold,
 		$alpha, $beta, $gamma)
@@ -55,11 +56,16 @@ class QueryCompletion{
 		foreach ($q1Concepts as $c1 => $probC1){
 			fprintf(STDERR,"processing c1:%d\n", $c1);
 			$flowProb = $this->GetConceptFlowProb($c1);
+
 			//print_r($flowProb);
 			if (empty($flowProb)){
 				continue;
 			}
 			foreach ($flowProb as $c2 => $prob){
+				if ( !isset($this->flowProb[$c2]) || $this->flowProb[$c2] < $prob){
+					$this->flowProb[$c2] = $prob; // save the prob in memory
+					//this->$flowProb save the max prob from any c1 of q1 to a specify c2
+				}
 				$prob2 = $this->QueryGeneratingProb($c2, $this->q2);
 				fprintf(STDERR, "c1 = $c1, c2 = $c2 prob1 = $prob prob2 = $prob2\n");
 				if ($prob * $prob2 > $this->threshold){
@@ -74,7 +80,6 @@ class QueryCompletion{
 				fprintf(STDOUT,"the c1 following is empty\n");
 			}
 		}
-		//arsort($conceptPool[$c1]);	
 		return $conceptPool;
 	}
 	public function QueryGeneratingProb($c, $query){
@@ -90,14 +95,14 @@ class QueryCompletion{
 		$ngrams2 = $this->nGenerate->GetNgrams($n -2);
 		//print_r($ngrams2);
 
-		$prob = $this->NgramGeneratingProb($c, $ngrams); // the whole one
+		$prob = $this->alpha * $this->NgramGeneratingProb($c, $ngrams); // the whole one
 		//echo "whole:".$prob."\n";
 		if ($ngrams1 != null){
-			$prob += $this->NgramGeneratingProb($c, $ngrams1) / 2;
+			$prob += $this->beta * $this->NgramGeneratingProb($c, $ngrams1) / 2;
 			//echo "plus 1:".$prob."\n";
 		}
 		if ($ngrams2 != null){
-			$prob += $this->NgramGeneratingProb($c, $ngrams2) / 3;
+			$prob += $this->gamma * $this->NgramGeneratingProb($c, $ngrams2) / 3;
 			//echo "plus 2:".$prob."\n";
 		}
 		return $prob;
@@ -174,7 +179,9 @@ class QueryCompletion{
 		}
 		foreach ($conceptPool as $c1 => $c2Set){
 			foreach ($c2Set as $c2 => $prob){
-				$uniqueC2[$c2] = 1;
+				if ( !isset($uniqueC2[$c2]) || $prob > $uniqueC2[$c2] ){
+					$uniqueC2[$c2] = $prob;
+				}
 			}
 		}
 		foreach ($uniqueC2 as $c2 => $value){
@@ -207,12 +214,25 @@ class QueryCompletion{
 			}
 			arsort($queryPool[$c2]);
 		}
+		//return $queryPool;
 
-		// the sorting prob above may be wrong.
-		// because that it only consider the final term of the prob chain.
-		// if we need to calculate the precise prob, we should consider 
-		// the prob of concept pool
-		return $queryPool;
+		//rank the completion query
+		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
+		arsort($completionProb);
+		return $completionProb;
+	}
+	public function RankCompletionQueryAcrossConcepts($queryPool){
+		// rank Completion Query across different concepts
+		foreach ($queryPool as $c2 => $querys){
+			foreach ($querys as $q => $prob){
+				if (!isset($completionPorb[$q]) || 
+					$completionProb[$q] < $prob * $this->flowProb[$c2]){
+						$completionProb[$q] = $prob * $this->flowProb[$c2];
+						// asign new one
+					}
+			}
+		}
+		return $completionProb;
 	}
 	public function GetWordInConcept($clusterNum, $prefix){
 		// return a list of words start the input prefix
@@ -294,15 +314,20 @@ class QueryCompletion{
 		$qTerms = mb_split($pattern, $query);
 		$rTerms = mb_split($pattern, $ref);
 		fprintf(STDERR, "query=%s,ref=%s\n", $query,$ref);
-						
+
 		$qLLRSet = $this->GetLLRSet($qTerms);
-		
+		/*
+		fprintf(STDERR, "qLLRSet\n");
+		foreach ($qLLRSet as $w => $v){
+			fprintf(STDERR, "\t%s,%lf\n",$w,$v);
+		}*/
+
 		$cTerms = array(); // complement terms
 		for ($i = 0; $i< count($rTerms); $i++){
-			$cTerms[$rTerms[$i]] = 1; // put all terms in bTerms into complement terms as the candidates 
+			$cTerms[$rTerms[$i]] = 1; // put all terms in rTerms into complement terms as the candidates 
 		}		
 		$overlap = false;
-		
+
 		// find duplicated terms
 		foreach ($qTerms as $q){
 			foreach ($rTerms as $r){
@@ -314,7 +339,7 @@ class QueryCompletion{
 				}
 			}
 		}
-		
+
 		// find duplicated terms with LLRSet
 		foreach ($rTerms as $r){
 			$rLLR = $this->_GetLLRSet($r);
@@ -403,6 +428,36 @@ class QueryCompletion{
 		}
 		return $clusterS;
 	}
+	public function GetQueryCombinationWithOtherMethod(){
+		// --------------duplaicate partial code from GetQueryCombination -------------
+		$words = $this->querySpliter->SplitTerm();
+		$conceptPool = $this->GetQueryConceptPool();
+
+		$orignalWords = "";
+		if (isset($words["word"][0])){
+			$orignalWords = $words["word"][0];
+			for ($i = 1 ;$i<count($words["word"]);  $i++){
+				$orignalWords.= " ".$words["word"][$i];
+			}
+		}
+		$queryPool = array();
+		$uniqueC2 = array();
+		if (empty($conceptPool)){
+			fprintf(STDERR,"conceptPool is empty\n");
+			return -1;
+		}
+		foreach ($conceptPool as $c1 => $c2Set){
+			foreach ($c2Set as $c2 => $prob){
+				$uniqueC2[$c2] = 1;
+			}
+		}
+		// --------------duplaicate partial code end -------------
+		$cm = new CompletionMethod($this->queryTB,$this->wordTB, $this->llrTB);
+		foreach ($uniqueC2 as $c2 => $value){
+			$ret["MostFreq"] = $cm->GetWithMostFreq($c2, $this->q2, 50);
+		}
+		return $ret;
+	}	
 	public static function test(){
 		$obj = new QueryCompletion("haha", "schwab ha文 s", 
 			"QueryClusterTest", "WordClusterTest", "ClusterFlowProb");
@@ -418,4 +473,39 @@ class QueryCompletion{
 	}
 }
 //QueryCompletion::test();
+
+class CompletionMethod{
+	protected $queryTB;
+	protected $wordTB;
+	protected $llrTB;
+	public function __construct($qTB, $wTB, $llrTB) {
+		$this->queryTB = $qTB;
+		$this->wordTB = $wTB;
+		$this->llrTB = $llrTB;
+	}
+	public function GetWithMostFreq($clusterNum, $qPrefix, $minFreq, $limit = -1) {
+		$sql = sprintf(
+			"select `Query`, `NumOfQuery` from `%s`
+			where `ClusterNum` = %d and `Query` like '%%%s%%' 
+			and `NumOfQuery` >= %d
+			group by `Query`
+			order by `NumOfQuery` desc
+			", 
+			$this->queryTB, $clusterNum, $qPrefix, $minFreq);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+
+		echo $sql."\n";
+		$clusterS = array(); 
+		if ($limit == -1 || $limit > mysql_num_rows($result)){
+			$limit = mysql_num_rows($result);
+		}
+		$i = 0;
+		while($i < $limit){
+			$row = mysql_fetch_row($result);
+			$clusterS[] = addslashes($row[0]);
+			$i++;
+		}
+		return $clusterS;
+	}
+}
 ?>
