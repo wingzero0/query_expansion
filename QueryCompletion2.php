@@ -10,7 +10,8 @@ mysql_select_db($database_cnn,$b95119_cnn);
 
 class QueryCompletion{
 	public $wordTB;
-	public $queryTB;
+	public $queryTB; // relaxed
+	public $queryTBTight; // tight 
 	public $clusterFlowTB;
 	public $llrTB;
 	public $q1;
@@ -24,7 +25,7 @@ class QueryCompletion{
 	public $beta; // for Query Generating Prob -- N - 1 gram
 	public $gamma; //for Query Generating Prob -- N - 2 gram
 	protected $flowProb;// the max prob from any c1 of q1 to a specify c2
-	public function __construct($q1, $q2, $qTB, $wTB,$cFlowTB,$llrTB,
+	public function __construct($q1, $q2, $qTB, $qTBTight, $wTB,$cFlowTB,$llrTB,
 		$flowThreshold, $threshold, $llrThreshold,
 		$alpha, $beta, $gamma)
 	{
@@ -32,6 +33,7 @@ class QueryCompletion{
 		$this->q2 = addslashes($q2);
 		$this->queryClassifier = new OnlineQueryClassify($qTB);
 		$this->queryTB = $qTB;
+		$this->queryTBTight = $qTBTight;
 		$this->wordTB = $wTB;
 		$this->clusterFlowTB = $cFlowTB;
 		$this->llrTB = $llrTB;
@@ -422,7 +424,7 @@ class QueryCompletion{
 			"select `Query`, `NumOfQuery` from `%s`
 			where `ClusterNum` = %d
 			order by `NumOfQuery`", 
-			$this->queryTB, $c);
+			$this->queryTBTight, $c);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
 		while($row = mysql_fetch_row($result)){

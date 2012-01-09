@@ -15,8 +15,13 @@ $query = fgets($fo);
 while(!feof($fo)){
 	$query = fgets($fo);
 	$query = trim($query);
+	
+	if (preg_match("#\\\\{5,}#", $query, $matches)){
+		fprintf(STDERR, "drop query:%s\n", $query);
+		continue;
+	}
 	$term_array = split(" ",$query);
-
+	
 	for($i=0;$i<sizeof($term_array)-1;$i++){
 		//for($j=$i+1;$j<sizeof($term_array);$j++){
 			//echo $term_array[$i]."\t".$term_array[$j]."\n";
@@ -29,30 +34,34 @@ while(!feof($fo)){
 		//}
 	}
 
-
+/*
 	$test++;
 	if($test%50000 == 0){
 		echo $test."\n";
 	}
-
+ */
 }
 fclose($fo);
 
 
 $test = 0;
 foreach($pair_array as $key => $v){
+	/*
 	$test++;
 	if($test%100000==0){
 		echo $test."\n";
 	}
-	$term1 = $key;
+	 */
+	$term1 = addslashes($key);
 	foreach($v as $key2 => $value){
 		//echo $term1."\t".$key2."\t".$value."\n";
-		$term1 = addslashes($term1);
 		$key2 = addslashes($key2);
 		//$value = addslashes($value);
 		$sqr = "insert into $TB (w1,w2,value) values('$term1','$key2', $value )";
-		mysql_query($sqr) or die(mysql_error());
+		mysql_query($sqr);
+		if (mysql_error()){
+			fprintf(STDERR, "%s", $sqr."\n".mysql_error()."\n");
+		}
 	}
 }
 

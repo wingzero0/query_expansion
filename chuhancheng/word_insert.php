@@ -45,7 +45,7 @@ foreach($t_array as $key => $v){
 	$key = addslashes($key);
 	//$v = addslashes($v);
 	$sqr = sprintf("insert into `%s` (`word`,`value`) values('%s',%d)", 
-		$argv[1], $key, $v);
+		$argv[2], $key, $v);
 	mysql_query($sqr) or die(mysql_error());
 }
 

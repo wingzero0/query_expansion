@@ -4,6 +4,10 @@
 // the cluster id is specified in the file name.
 // each line in the file is the query belonged to the cluster.
 
+// class WordConceptClean do the similar thing. 
+// But it read QueryConceptClean as input and 
+// split the query and count the word freq directly.
+
 require(dirname(__FILE__)."/QueryConceptInsertDB.php");
 //mysql_select_db($database_cnn,$b95119_cnn);
 
@@ -85,6 +89,9 @@ class WordConceptInsertDB extends QueryConceptInsertDB{
 }
 
 class WordConceptNumOfQuery extends FileProcessUtility{
+	// non-complete
+	// the query read from Session file should be splited to words
+	// thu Update SQL column should change
 	public $fp;
 	public $words;
 	public $targetTB;
@@ -157,6 +164,62 @@ class WordConceptNumOfQuery extends FileProcessUtility{
 		$this->ParseSession();
 		$this->UpdateDB();
 		//echo "update end\n";
+	}
+}
+
+class WordConceptClean {
+	public $qTB;
+	public $wTB;
+	public $clusterQ;
+	public $clusterW;
+	public function __construct($qConceptTB, $wConceptTB){
+		$this->qTB = $qConceptTB;
+		$this->wTB = $wConceptTB;
+	}
+	public function LoadQuery(){
+		$sql = sprintf(
+			"select `Query`, `ClusterNum`, `NumOfQuery`
+			from `%s`
+			",
+			$this->qTB
+		);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		while ($row = mysql_fetch_assoc($result)){
+			$q = addslashes($row["Query"]);
+			$c = intval($row["ClusterNum"]);
+			$clicked = intval($row["NumOfQuery"]);
+			$this->clusterQ[$c][$q] = $clicked; 
+		}
+	}
+	public function SplitWord(){
+		foreach($this->clusterQ as $c => $qs){
+			foreach ($qs as $q => $v){
+				$words = mb_split(" ", $q);
+				foreach ($words as $w){
+					if ( !isset($this->clusterW[$c][$w]) ){
+						$this->clusterW[$c][$w] = 0;
+					}
+					$this->clusterW[$c][$w] += $v;
+				}
+			}
+		}	
+	}
+	public function SaveWord(){
+		foreach ($this->clusterW as $c => $ws){
+			foreach ($ws as $w => $v){
+				$sql = sprintf(
+					"insert into `%s` (`Word`, `ClusterNum`, `NumOfWord`) 
+					values('%s', %d, %d)", 
+					$this->wTB, $w, $c, $v
+				);
+				$result = mysql_query($sql) or die($sql."\n".mysql_error());
+			}
+		}
+	}
+	public function run(){
+		$this->LoadQuery();
+		$this->SplitWord();
+		$this->SaveWord();	
 	}
 }
 ?>

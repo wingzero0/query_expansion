@@ -19,10 +19,11 @@ class QueryConceptTypoFilter {
 		$this->oTB = $oldTB;
 		$this->nTB = $newTB;
 	}
-	public function RemoveLowEditDistance(){
-		asort($this->querys);
-		$qs = array_keys($this->querys);
-		foreach ($this->querys as $q => $v){
+	public function RemoveLowEditDistance($querys){
+		asort($querys);
+		$qs = array_keys($querys);
+		$this->cleanQs = array();
+		foreach ($querys as $q => $v){
 			$this->cleanQs[$q] = $v; // copy
 		}
 		for ($i = 0;$i< count($qs) -1; $i++){ // two different direction
@@ -36,15 +37,14 @@ class QueryConceptTypoFilter {
 				}
 			}
 		}
-		echo "translate:\n";
-		print_r($translate);
+		//echo "translate:\n";
+		//print_r($translate);
 		return $this->cleanQs;
 	}
 	public function LoadDB(){
 		$sql = sprintf(
 			"select `Query`, `ClusterNum`, `NumOfQuery`
 			from `%s`
-			where `ClusterNum` = 61
 			",
 			$this->oTB
 		);
@@ -56,13 +56,29 @@ class QueryConceptTypoFilter {
 			$this->clusterQ[$c][$q] = $clicked; 
 		}
 	}
-	public function CleanQuery(){
-		foreach ($this->clusterQ as $c => $query1){
-			$this->querys = $query1;
-			$tmp = $this->RemoveLowEditDistance();
-			print_r($tmp);
+	
+	public function InsertDB($c, $querys){
+		foreach($querys as $q => $v){
+			$sql = sprintf(
+				"insert into `%s` (`Query`, `ClusterNum`, `SimValue`, `NumOfQuery`) 
+				values('%s', %d, 1.0, %d)", 
+				$this->nTB, $q, $c, $v
+			);
+			$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		}
 	}
+	
+	public function CleanQuery(){
+		foreach ($this->clusterQ as $c => $query1){
+			//$this->querys = $query1;
+			//print_r($query1);
+			$tmp = $this->RemoveLowEditDistance($query1);
+			$this->InsertDB($c, $tmp);
+			$tmp = NULL;
+			//print_r($tmp);
+		}
+	}
+		
 	public static function test(){
 		$obj = new QueryConceptTypoFilter("QueryCluster_4", "QueryClusterClean_4");
 		$obj->LoadDB();
