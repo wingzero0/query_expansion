@@ -205,6 +205,16 @@ class WordConceptClean {
 		}	
 	}
 	public function SaveWord(){
+		$sql = sprintf(
+			"CREATE TABLE if not exists `msn_click_log`.`%s` (
+				`rowID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+				`Word` VARCHAR( 255 ) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL ,
+				`ClusterNum` INT NOT NULL ,
+				`NumOfWord` INT NULL COMMENT  'records the num of target word appeared in cluster',
+				UNIQUE (  `Word` ,  `ClusterNum` ),
+				INDEX (  `NumOfWord` )
+			) ENGINE = MYISAM", $this->wTB);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		foreach ($this->clusterW as $c => $ws){
 			foreach ($ws as $w => $v){
 				$sql = sprintf(

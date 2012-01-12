@@ -13,11 +13,12 @@ class QueryCompletion{
 	public $queryTB; // relaxed
 	public $queryTBTight; // tight 
 	public $clusterFlowTB;
-	public $llrTB;
+	public $llrTB; // llr => t-test
 	public $q1;
 	public $q2;
 	public $queryClassifier;
-	public $threshold; // for QueryConcept and Query Generating Prob (in fuction GetQueryConpetPool)
+	//public $threshold; // for QueryConcept and Query Generating Prob (in fuction GetQueryConpetPool)
+	// $threshold useless -> should be delete
 	public $flowThreshold; // for Query Concept flow Prob
 	public $querySpliter;
 	public $nGenerate;
@@ -37,9 +38,8 @@ class QueryCompletion{
 		$this->wordTB = $wTB;
 		$this->clusterFlowTB = $cFlowTB;
 		$this->llrTB = $llrTB;
-		//$this->threshold = 0.00001;
-		$this->threshold = $threshold;//0.0 output everything
-		$this->llrThreshold = $llrThreshold;//-0.1 is too low
+		//$this->threshold = $threshold;//0.0 output everything
+		$this->llrThreshold = $llrThreshold;//30.0 may be ok
 		$this->flowThreshold = $flowThreshold;//0.01 may be ok
 		$this->querySpliter = new QuerySpliter($q2);
 		$this->nGenerate = new QuerySpliter($q2);
@@ -55,32 +55,45 @@ class QueryCompletion{
 
 		// Get the pool of concept
 		$conceptPool = array();
+		$tmpPool = array();
 		foreach ($q1Concepts as $c1 => $probC1){
-			fprintf(STDERR,"processing c1:%d\n", $c1);
+			//fprintf(STDERR,"processing c1:%d\n", $c1);
 			$flowProb = $this->GetConceptFlowProb($c1);
-
+			//fprintf(STDERR,"FlowProb amount:%d\n", count($flowProb));
 			//print_r($flowProb);
 			if (empty($flowProb)){
 				continue;
-			}
+			}			
 			foreach ($flowProb as $c2 => $prob){
 				if ( !isset($this->flowProb[$c2]) || $this->flowProb[$c2] < $prob){
 					$this->flowProb[$c2] = $prob; // save the prob in memory
 					//this->$flowProb save the max prob from any c1 of q1 to a specify c2
 				}
 				$prob2 = $this->QueryGeneratingProb($c2, $this->q2);
-				//fprintf(STDERR, "c1 = $c1, c2 = $c2 prob1 = $prob prob2 = $prob2\n");
-				if ($prob * $prob2 > $this->threshold){
-					//$conceptPool[$c1][$c2] = $probC1 * $prob * $prob2; 
-					$conceptPool[$c1][$c2] = $prob * $prob2; // ignore the ProbC1 in the first version
+				if ($prob2 > 0.0){
+					$tmpPool[$c1][$c2] = $prob * $prob2; // ignore the ProbC1 in the first version
 				}
+				//fprintf(STDERR, "c1 = $c1, c2 = $c2 prob1 = $prob prob2 = $prob2\n");
+				//if ($prob * $prob2 > $this->threshold){
+					//$conceptPool[$c1][$c2] = $probC1 * $prob * $prob2; 
+				//}
 			}
-			if (isset($conceptPool[$c1])){
-				arsort($conceptPool[$c1]);
+			if ( isset($tmpPool[$c1]) && count($tmpPool[$c1]) > 10){
+				arsort($tmpPool[$c1]);
+				$i = 0;
+				foreach ($tmpPool[$c1] as $c2 => $v){// take top 10 sense
+					$conceptPool[$c1][$c2] = $v;
+					$i++;
+					if ($i >= 10){
+						break;
+					}
+				}
+			}else if (isset($tmpPool[$c1]) && count($tmpPool[$c1]) <= 10){
+				$conceptPool[$c1] = $tmpPool[$c1];
 			}else{
-				//fprintf(STDERR,"the c1 following is empty\n");
-				fprintf(STDOUT,"the c1 following is empty\n");
+				//fprintf(STDOUT,"the c1 following is empty\n");
 			}
+			//fprintf(STDERR,"c2 candidate amount:%d\n", count($conceptPool[$c1]));
 		}
 		return $conceptPool;
 	}
@@ -152,9 +165,10 @@ class QueryCompletion{
 
 		$sql = sprintf(
 			"select `Cluster2`,`Prob` from `%s`
-			where `Cluster1` = %d and `prob` > %lf 
+			where `Cluster1` = %d and `Prob` > %lf 
 			order by `Prob` desc", 
 			$this->clusterFlowTB, $c1,$this->flowThreshold);
+			//echo $sql."\n";
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = NULL;
 		while($row = mysql_fetch_row($result)){
@@ -176,7 +190,7 @@ class QueryCompletion{
 		$queryPool = array();
 		$uniqueC2 = array();
 		if (empty($conceptPool)){
-			fprintf(STDERR,"conceptPool is empty\n");
+			//fprintf(STDERR,"conceptPool is empty\n");
 			$emptyArray = array();
 			return $emptyArray;//return the empty array()
 			//return -1;
@@ -227,6 +241,7 @@ class QueryCompletion{
 	}
 	public function RankCompletionQueryAcrossConcepts($queryPool){
 		// rank Completion Query across different concepts
+		$completionProb = array();
 		foreach ($queryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
 				if (!isset($completionPorb[$q]) || 
@@ -320,11 +335,6 @@ class QueryCompletion{
 		//fprintf(STDERR, "query=%s,ref=%s\n", $query,$ref);
 
 		$qLLRSet = $this->GetLLRSet($qTerms);
-		/*
-		fprintf(STDERR, "qLLRSet\n");
-		foreach ($qLLRSet as $w => $v){
-			fprintf(STDERR, "\t%s,%lf\n",$w,$v);
-		}*/
 
 		$cTerms = array(); // complement terms
 		for ($i = 0; $i< count($rTerms); $i++){
@@ -399,6 +409,7 @@ class QueryCompletion{
 			if ($max < $v){
 				$LLRSet = array(); // clear;
 				$LLRSet[$w] = $v;
+				$max = $v;
 			}else if ($max = $v){
 				$LLRSet[$w] = $v;// add more
 			}
@@ -407,9 +418,9 @@ class QueryCompletion{
 	}
 	protected function _GetLLRSet($word){
 		$sql = sprintf(
-			"select `Word1`, `LLR` from `%s`
+			"select `Word1`, `TValue` from `%s`
 			where `Word2` = '%s'
-			and (`LLR` is NULL or `LLR` < %f)", 
+			and `TValue` > %f", 
 			$this->llrTB, $word,$this->llrThreshold);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$LLRSet = array();
