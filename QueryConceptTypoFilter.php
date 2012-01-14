@@ -80,9 +80,9 @@ class QueryConceptTypoFilter {
 	}
 		
 	public static function test(){
-		$obj = new QueryConceptTypoFilter("QueryCluster_4", "QueryClusterClean_4");
+		$obj = new QueryConceptTypoFilter("QueryCluster_5", "QueryCluster_5_Clean");
 		$obj->LoadDB();
 		$obj->CleanQuery();
 	}
 }
-QueryConceptTypoFilter::test();
+//QueryConceptTypoFilter::test();

@@ -3,13 +3,14 @@ require("/home/b95119/query_expansion/connection.php");
 mysql_select_db($database_cnn,$b95119_cnn);
 
 if ($argc<5){
-	printf( "usage:php %s input output threshold DBVersionNum\n", basename(__FILE__));
+	printf( "usage:php %s input output upperThreshold lowerThreshold tableName\n", basename(__FILE__));
 	exit(-1);
 }
 $pair_nqq = $argv[1]; // input file name
 $pair_nqq_out = $argv[2]; // output file name
-$threshold = $argv[3]; // threshold for the selecting freq
-$tbName = $argv[4]; // training data version
+$upper = intval($argv[3]); // upper bound threshold for the selecting freq
+$lower = intval($argv[4]); // lower bound threshold for the selecting freq
+$tbName = $argv[5]; // training data version
 
 
 $fpin = fopen($pair_nqq,"r");
@@ -25,9 +26,12 @@ while($pair = fgets($fpin)){
 	$f_query = trim($pair_array[1]); // q1
 	$next_query = trim($pair_array[2]); // q2
 	
-	if ($num < $threshold){ // drop the pair
+	$Pattern = "/(www\s*)|(\s*com)/";
+	$q1 = preg_replace($Pattern, "", $f_query );
+	$q2 = preg_replace($Pattern, "", $next_query );
+	if ($num > $upper || $num < $lower ){ // drop the pair
 		continue;
-	}else if ($f_query == $next_query){
+	}else if ( levenshtein( $q1 , $q2 ) <= 2){
 		continue;
 	}
 	

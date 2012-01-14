@@ -13,7 +13,7 @@ $keys = array("q1", "q2", "qTB", "qTBTight",  "cFlowTB", "wTB", "llrTB",
 $ret = ParameterChecking($keys, $para);
 $obj = new QueryCompletion($para["q1"], $para["q2"], $para["qTB"],$para["qTBTight"], 
 	$para["wTB"], $para["cFlowTB"], $para["llrTB"], 
-	$para["threshlod"], $para["flowThreshold"], $para["llrThreshold"],
+	$para["flowThreshold"], $para["threshlod"], $para["llrThreshold"],
 	$para["alpha"], $para["beta"], $para["gamma"]);
 $ret = $obj->GetQueryCombination();
 print_r($ret);

@@ -1,7 +1,7 @@
 <?php
 //sample usage:
 //php run_QueryCompletion.php -q1 "haha" -q2 "schwab ha文 s"
-require("/home/b95119/query_expansion/QueryCompletion2.php");
+require("/home/b95119/query_expansion/QueryCompletion.php");
 
 function run_QueryCompletion($q1, $q2, $DBVerNum){
 	$para["q1"] = $q1;

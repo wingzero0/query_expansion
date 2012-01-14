@@ -59,11 +59,11 @@ class QueryCompletion{
 		foreach ($q1Concepts as $c1 => $probC1){
 			//fprintf(STDERR,"processing c1:%d\n", $c1);
 			$flowProb = $this->GetConceptFlowProb($c1);
-			//fprintf(STDERR,"FlowProb amount:%d\n", count($flowProb));
+			fprintf(STDERR,"FlowProb amount:%d\n", count($flowProb));
 			//print_r($flowProb);
 			if (empty($flowProb)){
 				continue;
-			}			
+			}
 			foreach ($flowProb as $c2 => $prob){
 				if ( !isset($this->flowProb[$c2]) || $this->flowProb[$c2] < $prob){
 					$this->flowProb[$c2] = $prob; // save the prob in memory
@@ -78,17 +78,18 @@ class QueryCompletion{
 					//$conceptPool[$c1][$c2] = $probC1 * $prob * $prob2; 
 				//}
 			}
-			if ( isset($tmpPool[$c1]) && count($tmpPool[$c1]) > 10){
+			$limit = 20;
+			if ( isset($tmpPool[$c1]) && count($tmpPool[$c1]) > $limit){
 				arsort($tmpPool[$c1]);
 				$i = 0;
 				foreach ($tmpPool[$c1] as $c2 => $v){// take top 10 sense
 					$conceptPool[$c1][$c2] = $v;
 					$i++;
-					if ($i >= 10){
+					if ($i >= $limit){
 						break;
 					}
 				}
-			}else if (isset($tmpPool[$c1]) && count($tmpPool[$c1]) <= 10){
+			}else if (isset($tmpPool[$c1]) && count($tmpPool[$c1]) <= $limit){
 				$conceptPool[$c1] = $tmpPool[$c1];
 			}else{
 				//fprintf(STDOUT,"the c1 following is empty\n");
@@ -159,20 +160,42 @@ class QueryCompletion{
 		}
 	}
 	public function GetConceptFlowProb($c1) {
-		// return a list of prob that start from c1
-		// the index of the array is cluster2's number, 
-		// the value of the array is prob of the corresponding flow
+		// select the concept which can be reached from $c1 by 2 step
+		// the index of the array is cluster 's number, 
+		// the value of the array is always set to 1
 
 		$sql = sprintf(
 			"select `Cluster2`,`Prob` from `%s`
 			where `Cluster1` = %d and `Prob` > %lf 
 			order by `Prob` desc", 
-			$this->clusterFlowTB, $c1,$this->flowThreshold);
+			$this->clusterFlowTB, $c1,0.0);
 			//echo $sql."\n";
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
-		$clusterS = NULL;
+		$clusterS = array();
 		while($row = mysql_fetch_row($result)){
-			$clusterS[intval($row[0])] = doubleval($row[1]);
+			//$clusterS[intval($row[0])] = doubleval($row[1]);
+			$clusterS[intval($row[0])] = 1.0;
+		}
+		$clusterS2 = array();
+		foreach ($clusterS as $c2 => $prob){
+			$sql = sprintf(
+				"select `Cluster2`,`Prob` from `%s`
+				where `Cluster1` = %d and `Prob` > %lf 
+				order by `Prob` desc", 
+				$this->clusterFlowTB, $c2,0.0);
+			$result = mysql_query($sql) or die($sql."\n".mysql_error());
+			while($row = mysql_fetch_row($result)){
+				$c3 = intval($row[0]);
+				$clusterS2[$c3] = doubleval($row[1]);
+				/*
+				if ( !isset($clusterS2[$c]) 
+					|| $clusterS2[$c] < doubleval($row[1]) ){
+					$clusterS2[$c] = doubleval($row[1]); // save the max one
+				}*/
+			}
+		}
+		foreach ($clusterS2 as $c3 => $prob){
+			$clusterS[$c3] = 1.0; 
 		}
 		return $clusterS;
 	}
