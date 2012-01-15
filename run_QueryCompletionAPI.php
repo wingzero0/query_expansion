@@ -12,7 +12,7 @@ function run_QueryCompletion($q1, $q2, $DBVerNum){
 	$para["cFlowTB"] = "ClusterFlowProb_".$DBVerNum;
 	$para["llrTB"] = "t_test_".$DBVerNum;
 	$para["threshlod"] = "0.0";
-	$para["flowThreshold"] = "0.005";
+	$para["flowThreshold"] = "0.000";
 	$para["llrThreshold"] = "30.0";
 	$para["alpha"] = "0.5";
 	$para["beta"] = "0.3";

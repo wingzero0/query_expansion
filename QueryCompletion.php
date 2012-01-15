@@ -63,7 +63,7 @@ class QueryCompletion{
 			//print_r($flowProb);
 			if (empty($flowProb)){
 				continue;
-			}			
+			}
 			foreach ($flowProb as $c2 => $prob){
 				if ( !isset($this->flowProb[$c2]) || $this->flowProb[$c2] < $prob){
 					$this->flowProb[$c2] = $prob; // save the prob in memory
@@ -73,10 +73,7 @@ class QueryCompletion{
 				if ($prob2 > 0.0){
 					$tmpPool[$c1][$c2] = $prob * $prob2; // ignore the ProbC1 in the first version
 				}
-				//fprintf(STDERR, "c1 = $c1, c2 = $c2 prob1 = $prob prob2 = $prob2\n");
-				//if ($prob * $prob2 > $this->threshold){
-					//$conceptPool[$c1][$c2] = $probC1 * $prob * $prob2; 
-				//}
+				//fprintf(STDERR, "c1 = $c1, c2 = $c2 q2 = %s prob1 = $prob prob2 = $prob2\n", $this->q2);
 			}
 			$limit = 20;
 			if ( isset($tmpPool[$c1]) && count($tmpPool[$c1]) > $limit){
@@ -167,11 +164,14 @@ class QueryCompletion{
 		$sql = sprintf(
 			"select `Cluster2`,`Prob` from `%s`
 			where `Cluster1` = %d and `Prob` > %lf 
-			order by `Prob` desc", 
+			order by `Prob` desc
+			limit 0, 1000
+			", 
 			$this->clusterFlowTB, $c1,$this->flowThreshold);
+			
 			//echo $sql."\n";
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
-		$clusterS = NULL;
+		$clusterS = array();
 		while($row = mysql_fetch_row($result)){
 			$clusterS[intval($row[0])] = doubleval($row[1]);
 		}
@@ -180,7 +180,6 @@ class QueryCompletion{
 	public function GetQueryCombination(){
 		$words = $this->querySpliter->SplitTerm();
 		$conceptPool = $this->GetQueryConceptPool();
-		//print_r($words);		
 		$orignalWords = "";
 		if (isset($words["word"][0])){
 			$orignalWords = $words["word"][0];
@@ -202,6 +201,7 @@ class QueryCompletion{
 					$uniqueC2[$c2] = $prob;
 				}
 			}
+			//print_r($uniqueC2);
 		}
 		foreach ($uniqueC2 as $c2 => $value){
 			// WordInConcept
@@ -216,7 +216,7 @@ class QueryCompletion{
 
 			$whiteSpaces = "\s{2,}";// two or more spaces
 			foreach($newWords as $newWord){
-				$tmpQuery = mb_ereg_replace($whiteSpaces, " ", $orignalWords." ".$newWord);
+				$tmpQuery = mb_ereg_replace($whiteSpaces, " ", $orignalWords." ".$newWord); // can be speed up by changing the function
 				$tmpQuery = mb_ereg_replace("^(\s+)", "", $tmpQuery);
 				$newQuerys = $this->QueryReplaceAndCompletion($tmpQuery, $c2);
 
@@ -234,7 +234,7 @@ class QueryCompletion{
 			arsort($queryPool[$c2]);
 		}
 		//return $queryPool;
-
+		
 		//rank the completion query
 		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
 		arsort($completionProb);
@@ -245,10 +245,10 @@ class QueryCompletion{
 		$completionProb = array();
 		foreach ($queryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
-				if (!isset($completionPorb[$q]) || 
-					$completionProb[$q] < $prob * $this->flowProb[$c2]){
-						$completionProb[$q] = $prob * $this->flowProb[$c2];
-						// asign new one
+				$product = $prob * $this->flowProb[$c2];
+				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
+						$completionProb[$q] = $product;
+						// assign new one
 					}
 			}
 		}
@@ -344,12 +344,28 @@ class QueryCompletion{
 		$overlap = false;
 
 		// find duplicated terms
-		foreach ($qTerms as $q){
-			foreach ($rTerms as $r){
-				if ($q == $r){
-					$overlap = true; // get overlapping
-					if (isset($cTerms[$r])){
-						unset($cTerms[$r]); // drop the duplicated terms
+		if ( count($qTerms) > 1 ) {
+			foreach ($qTerms as $q){
+				if ($q == "www" || $q == "com"){
+					continue;
+				}
+				foreach ($rTerms as $r){
+					if ($q == $r){
+						$overlap = true; // get overlapping
+						if (isset($cTerms[$r])){
+							unset($cTerms[$r]); // drop the duplicated terms
+						}
+					}
+				}
+			}
+		}else {// count = 0 or 1
+			foreach ($qTerms as $q){
+				foreach ($rTerms as $r){
+					if ($q == $r){
+						$overlap = true; // get overlapping
+						if (isset($cTerms[$r])){
+							unset($cTerms[$r]); // drop the duplicated terms
+						}
 					}
 				}
 			}

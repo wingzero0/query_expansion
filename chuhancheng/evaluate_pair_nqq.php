@@ -62,8 +62,8 @@ while($session = fgets($fd)){
 	if(empty($ret)){
 		fwrite($fderror,$session."\n");
 		//fwrite($fderror,$f_query."\t".$test_next."\n");
-		continue;
-		//$nonmatch = false;
+		//continue;
+		$nonmatch = false;
 	}
 
 	foreach($ret as $key => $value){

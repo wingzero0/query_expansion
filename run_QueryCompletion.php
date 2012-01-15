@@ -5,7 +5,7 @@
 // -wTB WordCluster_4 -cFlowTB ClusterFlowProb_4 
 // -llrTB t_test_4 -threshlod 0.0 -flowThreshold 0.005 -llrThreshold 30.0 
 // -alpha 0.5 -beta 0.3 -gamma 0.2
-require("/home/b95119/query_expansion/QueryCompletion2.php");
+require("/home/b95119/query_expansion/QueryCompletion.php");
 
 $para = ParameterParser($argc, $argv);
 $keys = array("q1", "q2", "qTB", "qTBTight",  "cFlowTB", "wTB", "llrTB",

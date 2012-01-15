@@ -29,9 +29,10 @@ while($pair = fgets($fpin)){
 	$Pattern = "/(www\s*)|(\s*com)/";
 	$q1 = preg_replace($Pattern, "", $f_query );
 	$q2 = preg_replace($Pattern, "", $next_query );
-	if ($num > $upper || $num < $lower ){ // drop the pair
+	if ($num > $upper || $num < $lower || levenshtein( $q1 , $q2 ) <= 2 
+		|| strlen($q1) == 0 || strlen($q2) == 0){ // drop the pair
 		continue;
-	}else if ( levenshtein( $q1 , $q2 ) <= 2){
+	}else if ($next_query == "google" || $next_query == "yahoo"){
 		continue;
 	}
 	

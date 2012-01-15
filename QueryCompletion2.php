@@ -365,13 +365,29 @@ class QueryCompletion{
 		}		
 		$overlap = false;
 
-		// find duplicated terms
-		foreach ($qTerms as $q){
-			foreach ($rTerms as $r){
-				if ($q == $r){
-					$overlap = true; // get overlapping
-					if (isset($cTerms[$r])){
-						unset($cTerms[$r]); // drop the duplicated terms
+				// find duplicated terms
+		if ( count($qTerms) > 1 ) {
+			foreach ($qTerms as $q){
+				if ($q == "www" || $q == "com"){
+					continue;
+				}
+				foreach ($rTerms as $r){
+					if ($q == $r){
+						$overlap = true; // get overlapping
+						if (isset($cTerms[$r])){
+							unset($cTerms[$r]); // drop the duplicated terms
+						}
+					}
+				}
+			}
+		}else {// count = 0 or 1
+			foreach ($qTerms as $q){
+				foreach ($rTerms as $r){
+					if ($q == $r){
+						$overlap = true; // get overlapping
+						if (isset($cTerms[$r])){
+							unset($cTerms[$r]); // drop the duplicated terms
+						}
 					}
 				}
 			}
