@@ -26,6 +26,9 @@ class QueryCompletion{
 	public $beta; // for Query Generating Prob -- N - 1 gram
 	public $gamma; //for Query Generating Prob -- N - 2 gram
 	protected $flowProb;// the max prob from any c1 of q1 to a specify c2
+	protected $tValue;
+	protected $clusterQuerys;
+	protected $clusterSum;
 	public function __construct($q1, $q2, $qTB, $qTBTight, $wTB,$cFlowTB,$llrTB,
 		$flowThreshold, $threshold, $llrThreshold,
 		$alpha, $beta, $gamma)
@@ -46,6 +49,9 @@ class QueryCompletion{
 		$this->alpha = $alpha;
 		$this->beta = $beta;
 		$this->gamma = $gamma;
+		$this->tValue = $this->InitTValue();
+		$this->clusterQuerys = $this->InitConceptQuerys();
+		$this->clusterSum = $this->InitConceptQuerysCount();
 	}
 	public function GetQueryConceptPool() {
 		$q1Concepts = $this->queryClassifier->GetConcept($this->q1);
@@ -74,9 +80,6 @@ class QueryCompletion{
 					$tmpPool[$c1][$c2] = $prob * $prob2; // ignore the ProbC1 in the first version
 				}
 				//fprintf(STDERR, "c1 = $c1, c2 = $c2 prob1 = $prob prob2 = $prob2\n");
-				//if ($prob * $prob2 > $this->threshold){
-					//$conceptPool[$c1][$c2] = $probC1 * $prob * $prob2; 
-				//}
 			}
 			$limit = 20;
 			if ( isset($tmpPool[$c1]) && count($tmpPool[$c1]) > $limit){
@@ -127,37 +130,15 @@ class QueryCompletion{
 		// return the summation probability of the ngrams
 		$sum = 0;
 		foreach ($ngrams as $i => $ngram){
-			$sql = sprintf(
-				"select sum(`NumOfQuery`) from `%s`
-				where `ClusterNum` = %d and `Query` like '%%%s%%'
-				group by `ClusterNum`", 
-				$this->queryTB, $c, $ngram);
-			$result = mysql_query($sql) or die($sql."\n".mysql_error());
-			if($row = mysql_fetch_row($result)){
-				$sum += intval($row[0]);
+			foreach ($this->clusterQuerys[$c] as $q => $v){
+				//echo $q."\n";
+				if ( strstr($q, $ngram) !== false ){
+					$sum += $v;
+				}
 			}
 		}
-
-		$sql = sprintf(
-			"select sum(`NumOfQuery`) from `%s`
-			where `ClusterNum` = %d
-			group by `ClusterNum`", 
-			$this->queryTB, $c);
-		$result = mysql_query($sql) or die($sql."\n".mysql_error());
-		if($row = mysql_fetch_row($result)){
-			if (intval($row[0]) == 0){
-				fprintf(STDERR, "the number of query in cluster is empty\n");
-				return 0.0; // cluster is empty??
-			}else{
-				//echo "ClusterNum total:".$row[0]."\n";
-				//echo "Sum:".$sum."\n";
-				$prob = doubleval($sum) / doubleval($row[0]);
-				return $prob;
-			}
-		}else {
-			fprintf(STDERR, "DB error\n");
-			return -1.0;
-		}
+		$prob = (double) $sum / (double) $this->clusterSum[$c];
+		return $prob;
 	}
 	public function GetConceptFlowProb($c1) {
 		// select the concept which can be reached from $c1 by 2 step
@@ -202,7 +183,6 @@ class QueryCompletion{
 	public function GetQueryCombination(){
 		$words = $this->querySpliter->SplitTerm();
 		$conceptPool = $this->GetQueryConceptPool();
-		//print_r($words);		
 		$orignalWords = "";
 		if (isset($words["word"][0])){
 			$orignalWords = $words["word"][0];
@@ -256,7 +236,6 @@ class QueryCompletion{
 			arsort($queryPool[$c2]);
 		}
 		//return $queryPool;
-
 		//rank the completion query
 		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
 		arsort($completionProb);
@@ -267,10 +246,10 @@ class QueryCompletion{
 		$completionProb = array();
 		foreach ($queryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
-				if (!isset($completionPorb[$q]) || 
-					$completionProb[$q] < $prob * $this->flowProb[$c2]){
-						$completionProb[$q] = $prob * $this->flowProb[$c2];
-						// asign new one
+				$product = $prob * $this->flowProb[$c2];
+				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
+						$completionProb[$q] = $product;
+						// assign new one
 					}
 			}
 		}
@@ -365,7 +344,7 @@ class QueryCompletion{
 		}		
 		$overlap = false;
 
-				// find duplicated terms
+		// find duplicated terms
 		if ( count($qTerms) > 1 ) {
 			foreach ($qTerms as $q){
 				if ($q == "www" || $q == "com"){
@@ -456,29 +435,59 @@ class QueryCompletion{
 		return $LLRSet;
 	}
 	protected function _GetLLRSet($word){
-		$sql = sprintf(
-			"select `Word1`, `TValue` from `%s`
-			where `Word2` = '%s'
-			and `TValue` > %f", 
-			$this->llrTB, $word,$this->llrThreshold);
-		$result = mysql_query($sql) or die($sql."\n".mysql_error());
-		$LLRSet = array();
-		while($row = mysql_fetch_row($result)){
-			$LLRSet[addslashes($row[0])] = doubleval($row[1]);
+		//$w = addslashes($word);
+		//$w means w2
+		if (isset($this->tValue[$word])){
+			return $this->tValue[$word];
+		}else{
+			return array(); // empty array 
 		}
-		return $LLRSet;
 	}
 	protected function GetConceptQuerys($c){
 		// return a list of Querys in the given concept (cluster)
 		$sql = sprintf(
 			"select `Query`, `NumOfQuery` from `%s`
-			where `ClusterNum` = %d
-			order by `NumOfQuery`", 
+			where `ClusterNum` = %d", 
 			$this->queryTBTight, $c);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
 		while($row = mysql_fetch_row($result)){
 			$clusterS[ addslashes($row[0]) ] = intval($row[1]);
+		}
+		return $clusterS;
+	}
+	private function InitTValue(){
+		$sql = sprintf(
+			"select `Word1`, `Word2`, `TValue` from `%s`
+			where `TValue` > %f", 
+			$this->llrTB, $this->llrThreshold);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$TSet = array();
+		while($row = mysql_fetch_row($result)){
+			//$TSet[w2][w1] = $tvalue
+			$TSet[addslashes($row[1])][addslashes($row[0])] = doubleval($row[2]);
+		}
+		return $TSet;
+	}
+	private function InitConceptQuerys(){
+		$sql = sprintf(
+			"select `ClusterNum`, `Query`, `NumOfQuery`  from `%s`", 
+			$this->queryTB);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$clusterS = array();
+		while($row = mysql_fetch_row($result)){
+			$clusterS[intval($row[0])][ addslashes($row[1]) ] = intval($row[2]);
+		}
+		return $clusterS;
+	}
+	private function InitConceptQuerysCount(){
+		$sql = sprintf(
+			"select `ClusterNum`, sum(`NumOfQuery`) from `%s` group by `ClusterNum`", 
+			$this->queryTB);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$clusterS = array();
+		while($row = mysql_fetch_row($result)){
+			$clusterS[intval($row[0])] = intval($row[1]);
 		}
 		return $clusterS;
 	}

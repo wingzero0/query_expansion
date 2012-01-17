@@ -129,6 +129,9 @@ class QueryCompletion{
 		// return the summation probability of the ngrams
 		$sum = 0;
 		foreach ($ngrams as $i => $ngram){
+			if (empty($ngram)){
+				continue;
+			}
 			foreach ($this->clusterQuerys[$c] as $q => $v){
 				//echo $q."\n";
 				if ( strstr($q, $ngram) !== false ){
