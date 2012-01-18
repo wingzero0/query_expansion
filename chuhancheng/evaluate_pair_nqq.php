@@ -53,6 +53,8 @@ while($session = fgets($fd)){
 		$ret = run_QueryCompletion($f_query, $test_next, $dbNum);
 	}else if ($method == "baseline"){
 		$ret = run_Baseline($f_query, $test_next, $dbNum);
+	}else if ($method == "flowandfreq"){
+		$ret = run_QueryCompletionWithFlowAndFreq($f_query, $test_next, $dbNum);
 	}
 	//echo $f_query."\t".$test_next."\n";
 	//var_dump($ret);

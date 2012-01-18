@@ -1,5 +1,5 @@
 <?php
-require("/home/b95119/query_expansion/QueryCompletionBaseline.php");
+require_once("/home/b95119/query_expansion/QueryCompletionBaseline.php");
 
 function run_Baseline($q1, $q2, $DBVerNum,$limit = 10){
 	$para["q1"] = $q1;

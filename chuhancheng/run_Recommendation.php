@@ -2,8 +2,8 @@
 //sample usage:
 //php run_Recommendation.php -t 0 -c 2 -input pair_nqq.txt -method completion -o out.txt
 
-require("/home/b95119/query_expansion/run_QueryCompletionAPI.php");
-require("/home/b95119/query_expansion/run_BaselineAPI.php");
+require_once("/home/b95119/query_expansion/run_QueryCompletionAPI.php");
+require_once("/home/b95119/query_expansion/run_BaselineAPI.php");
 
 $para = ParameterParser($argc, $argv);
 $term_number = intval($para["t"]); // the number of complete term
@@ -32,6 +32,7 @@ while($pair = fgets($fd)){
 		$test_next = trim($test_next);
 		//echo $test_next."\n";
 		$test_next = $test_next." ".substr($next_term_array[$term_number],0,$characters);
+		$test_next = trim($test_next);
 	}
 
 	if ($para["method"] == "completion"){
@@ -40,6 +41,11 @@ while($pair = fgets($fd)){
 		$ret = run_QueryCompletion($f_query, $test_next, 5);
 	}else if ($para["method"] == "baseline"){
 		$ret = run_Baseline($f_query, $test_next, 5);
+	}else if ($para["method"] == "flowandfreq"){
+		//echo $f_query."\n";
+		//echo $test_next."\n";
+		
+		$ret = run_QueryCompletionWithFlowAndFreq($f_query, $test_next, 5);
 	}
 	
 	fwrite($fdout,$pair."\n");

@@ -5,7 +5,10 @@ require_once(dirname(__FILE__)."/QuerySpliter.php");
 require_once(dirname(__FILE__)."/OnlineQueryClassify.php");
 require_once(dirname(__FILE__)."/connection.php");
 require_once(dirname(__FILE__)."/NgramGenerate.php");
-require_once(dirname(__FILE__)."/QueryGoogle.php");
+//require_once(dirname(__FILE__)."/QueryGoogle.php");
+require_once(dirname(__FILE__)."/ParialQueryEntropy.php");
+require_once(dirname(__FILE__)."/QueryCompletionBaseline.php");
+
 mysql_select_db($database_cnn,$b95119_cnn);
 
 class QueryCompletion{
@@ -49,9 +52,6 @@ class QueryCompletion{
 		$this->alpha = $alpha;
 		$this->beta = $beta;
 		$this->gamma = $gamma;
-		$this->tValue = $this->InitTValue();
-		$this->clusterQuerys = $this->InitConceptQuerys();
-		$this->clusterSum = $this->InitConceptQuerysCount();
 	}
 	public function GetQueryConceptPool() {
 		$q1Concepts = $this->queryClassifier->GetConcept($this->q1);
@@ -164,6 +164,18 @@ class QueryCompletion{
 		return $clusterS;
 	}
 	public function GetQueryCombination(){
+		$e = $this->CheckEntropy();
+		if ($e >= 0.0 && $e <= 5.0){
+			//echo $this->q2 . $e ."\n";
+			$obj = new QueryCompletionBaseline($this->q1, $this->q2, $this->queryTBTight,
+					$this->wordTB, 6, 20);
+			$ret = $obj->GetMostFreqQuery();
+			return $ret; 	
+		}
+		$this->tValue = $this->InitTValue();
+		$this->clusterQuerys = $this->InitConceptQuerys();
+		$this->clusterSum = $this->InitConceptQuerysCount();
+
 		$words = $this->querySpliter->SplitTerm();
 		$conceptPool = $this->GetQueryConceptPool();
 		$orignalWords = "";
@@ -201,6 +213,7 @@ class QueryCompletion{
 			}
 
 			$whiteSpaces = "\s{2,}";// two or more spaces
+			$wwwPattern = "/( www )|( www$)|( com )/";
 			foreach($newWords as $newWord){
 				$tmpQuery = mb_ereg_replace($whiteSpaces, " ", $orignalWords." ".$newWord); // can be speed up by changing the function
 				$tmpQuery = mb_ereg_replace("^(\s+)", "", $tmpQuery);
@@ -209,6 +222,9 @@ class QueryCompletion{
 				if (!empty($newQuerys)){
 					//print_r($newQuerys);
 					foreach($newQuerys as $newQuery){
+						if (preg_match($wwwPattern, $newQuery, $matches)){
+							continue;
+						}
 						$prob = $this->QueryGeneratingProb($c2, $newQuery); // it can replace by google filter				
 						//$num = $this->QueryFilter($newQuery);
 						$queryPool[$c2][$newQuery] = $prob;
@@ -217,13 +233,15 @@ class QueryCompletion{
 				}
 
 			}
-			arsort($queryPool[$c2]);
+			if ( isset($queryPool[$c2]) ){
+				arsort($queryPool[$c2]);
+			}
 		}
 		//return $queryPool;
 		
 		//rank the completion query
 		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
-		arsort($completionProb);
+		//arsort($completionProb);
 		return $completionProb;
 	}
 	public function RankCompletionQueryAcrossConcepts($queryPool){
@@ -233,11 +251,12 @@ class QueryCompletion{
 			foreach ($querys as $q => $prob){
 				$product = $prob * $this->flowProb[$c2];
 				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
-						$completionProb[$q] = $product;
-						// assign new one
-					}
+					$completionProb[$q] = $product;
+					// assign new one
+				}
 			}
 		}
+		arsort($completionProb);
 		return $completionProb;
 	}
 	public function GetWordInConcept($clusterNum, $prefix){
@@ -377,7 +396,7 @@ class QueryCompletion{
 			for($i = 1;$i< count($keys) ;$i++){
 				$complement .= " ".$keys[$i];
 			}
-			//echo $small."\t".$big."\t"."get complement:".$complement."\n";
+			//echo $query."\t".$ref."\t"."get complement:".$complement."\n";
 			return $complement;
 		}else{
 			// no overlapping, no complement issue;
@@ -480,7 +499,7 @@ class QueryCompletion{
 		// --------------duplaicate partial code from GetQueryCombination -------------
 		$words = $this->querySpliter->SplitTerm();
 		$conceptPool = $this->GetQueryConceptPool();
-
+		/*
 		$orignalWords = "";
 		if (isset($words["word"][0])){
 			$orignalWords = $words["word"][0];
@@ -488,11 +507,14 @@ class QueryCompletion{
 				$orignalWords.= " ".$words["word"][$i];
 			}
 		}
+		*/
 		$queryPool = array();
 		$uniqueC2 = array();
 		if (empty($conceptPool)){
-			fprintf(STDERR,"conceptPool is empty\n");
-			return -1;
+			//fprintf(STDERR,"conceptPool is empty\n");
+			$emptyArray = array();
+			return $emptyArray;//return the empty array()
+			//return -1;
 		}
 		foreach ($conceptPool as $c1 => $c2Set){
 			foreach ($c2Set as $c2 => $prob){
@@ -500,11 +522,34 @@ class QueryCompletion{
 			}
 		}
 		// --------------duplaicate partial code end -------------
-		$cm = new CompletionMethod($this->queryTB,$this->wordTB, $this->llrTB);
+		$cm = new CompletionMethod($this->queryTBTight,$this->wordTB, $this->llrTB);
 		foreach ($uniqueC2 as $c2 => $value){
-			$ret["MostFreq"] = $cm->GetWithMostFreq($c2, $this->q2, 50);
+			$Sets[] = $cm->GetWithMostFreq($c2, $this->q2, 10);
 		}
-		return $ret;
+		$tmpPool = array();
+		foreach ($Sets as $i => $querys ){
+			foreach ($querys as $q => $freq){
+				if ( !isset($tmpPool[$q]) || $tmpPool[$q] < $freq ){
+					$tmpPool[$q] = $freq;
+				}
+			}
+		}
+		if (empty($tmpPool)){
+			//echo "tmpPool empty\n";
+			return $tmpPool;
+		} 
+		arsort($tmpPool);
+		
+		$querys = array_keys($tmpPool);
+		for ($i = 0; ($i< 10 && $i <count($querys)) ; $i++){
+			$queryPool[$querys[$i]] = $tmpPool[$querys[$i]];
+		}
+		return $queryPool;
+	}
+	public function CheckEntropy(){
+		$obj = new ParialQueryEntropy();
+		$e = $obj->GetEntropy($this->queryTBTight, $this->q2);
+		return $e;
 	}	
 	public static function test(){
 		$obj = new QueryCompletion("haha", "schwab ha文 s", 
@@ -534,7 +579,7 @@ class CompletionMethod{
 	public function GetWithMostFreq($clusterNum, $qPrefix, $minFreq, $limit = -1) {
 		$sql = sprintf(
 			"select `Query`, `NumOfQuery` from `%s`
-			where `ClusterNum` = %d and `Query` like '%%%s%%' 
+			where `ClusterNum` = %d and `Query` like '%s%%' 
 			and `NumOfQuery` >= %d
 			group by `Query`
 			order by `NumOfQuery` desc
@@ -542,7 +587,7 @@ class CompletionMethod{
 			$this->queryTB, $clusterNum, $qPrefix, $minFreq);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 
-		echo $sql."\n";
+		//echo $sql."\n";
 		$clusterS = array(); 
 		if ($limit == -1 || $limit > mysql_num_rows($result)){
 			$limit = mysql_num_rows($result);
@@ -550,7 +595,7 @@ class CompletionMethod{
 		$i = 0;
 		while($i < $limit){
 			$row = mysql_fetch_row($result);
-			$clusterS[] = addslashes($row[0]);
+			$clusterS[addslashes($row[0])] = intval($row[1]);
 			$i++;
 		}
 		return $clusterS;
