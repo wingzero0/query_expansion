@@ -27,8 +27,10 @@ class QueryCompletion{
 	public $gamma; //for Query Generating Prob -- N - 2 gram
 	protected $flowProb;// the max prob from any c1 of q1 to a specify c2
 	protected $tValue;
-	protected $clusterQuerys;
+	//protected $clusterQuerys;
+	protected $clusterWords;
 	protected $clusterSum;
+	protected $conceptFlowProb;
 	public function __construct($q1, $q2, $qTB, $qTBTight, $wTB,$cFlowTB,$llrTB,
 		$flowThreshold, $threshold, $llrThreshold,
 		$alpha, $beta, $gamma)
@@ -50,8 +52,10 @@ class QueryCompletion{
 		$this->beta = $beta;
 		$this->gamma = $gamma;
 		$this->tValue = $this->InitTValue();
-		$this->clusterQuerys = $this->InitConceptQuerys();
-		$this->clusterSum = $this->InitConceptQuerysCount();
+		//$this->clusterQuerys = $this->InitConceptQuerys();
+		$this->clusterWords = $this->InitConceptWords();
+		$this->clusterSum = $this->InitConceptWordsCount();
+		$this->conceptFlowProb = $this->InitConceptFlowProb();
 	}
 	public function GetQueryConceptPool() {
 		$q1Concepts = $this->queryClassifier->GetConcept($this->q1);
@@ -61,26 +65,31 @@ class QueryCompletion{
 
 		// Get the pool of concept
 		$conceptPool = array();
-		$tmpPool = array();
 		foreach ($q1Concepts as $c1 => $probC1){
 			//fprintf(STDERR,"processing c1:%d\n", $c1);
-			$flowProb = $this->GetConceptFlowProb($c1);
-			//fprintf(STDERR,"FlowProb amount:%d\n", count($flowProb));
-			if (empty($flowProb)){
-				continue;
-			}
-			foreach ($flowProb as $c2 => $prob){
-				if ( !isset($this->flowProb[$c2]) || $this->flowProb[$c2] < $prob){
-					$this->flowProb[$c2] = $prob; // save the prob in memory
-					//this->$flowProb save the max prob from any c1 of q1 to a specify c2
+			for ($i = 0;$i< 2;$i++){
+				$tmpPool = array();
+				$flowProb = $this->GetConceptFlowProb($c1, $i+1);
+				//fprintf(STDERR,"FlowProb amount:%d\n", count($flowProb));
+				if (empty($flowProb)){
+					continue;
 				}
-				$prob2 = $this->QueryGeneratingProb($c2, $this->q2);
-				if ($prob2 > 0.0){
-					$tmpPool[$c1][$c2] = $prob * $prob2; // ignore the ProbC1 in the first version
+				foreach ($flowProb as $c2 => $prob){
+					if ( !isset($this->flowProb[$c2]) || $this->flowProb[$c2] < $prob){
+						$this->flowProb[$c2] = $prob; // save the prob in memory
+						//this->$flowProb save the max prob from any c1 of q1 to a specify c2
+					}
+					$prob2 = $this->QueryGeneratingProb($c2, $this->q2);
+					if ($prob2 > 0.0){
+						$tmpPool[$c1][$c2] = $prob * $prob2; // ignore the ProbC1 in the first version
+					}
+					//fprintf(STDERR, "c1 = $c1, c2 = $c2 q2 = %s prob1 = $prob prob2 = $prob2\n", $this->q2);
 				}
-				//fprintf(STDERR, "c1 = $c1, c2 = $c2 q2 = %s prob1 = $prob prob2 = $prob2\n", $this->q2);
+				//if (count($tmpPool) > 1){
+					break;
+				//}
 			}
-			$limit = 1000;
+			$limit = 100;
 			if ( isset($tmpPool[$c1]) && count($tmpPool[$c1]) > $limit){
 				arsort($tmpPool[$c1]);
 				$i = 0;
@@ -101,81 +110,50 @@ class QueryCompletion{
 		return $conceptPool;
 	}
 	public function QueryGeneratingProb($c, $query){
-		$ret = $this->nGenerate->ReplaceNewQuery($query);
-
-		$qWords = $this->nGenerate->GetQWords(); // for counting the number of term in NgramGenerate 
-		//The number of terms are different between querySpliter and NgramGenerate.
-
-		$n = count($qWords);
-		$ngrams = $this->nGenerate->GetNgrams($n);
-		$ngrams1 = $this->nGenerate->GetNgrams($n -1);
-		//print_r($ngrams1);
-		$ngrams2 = $this->nGenerate->GetNgrams($n -2);
-		//print_r($ngrams2);
-
-		$prob = $this->alpha * $this->NgramGeneratingProb($c, $ngrams); // the whole one
-		//echo "whole:".$prob."\n";
-		if ($ngrams1 != null){
-			$prob += $this->beta * $this->NgramGeneratingProb($c, $ngrams1) / 2;
-			//echo "plus 1:".$prob."\n";
-		}
-		if ($ngrams2 != null){
-			$prob += $this->gamma * $this->NgramGeneratingProb($c, $ngrams2) / 3;
-			//echo "plus 2:".$prob."\n";
-		}
-		return $prob;
+		return $this->UnigramGeneratingProb($c, $query);
 	}
-	private function NgramGeneratingProb($c, $ngrams){
-		// return the summation probability of the ngrams
+	private function UnigramGeneratingProb($c, $s){
+		$words = preg_split("/ /", $s);
+		//$total = 0;
 		$sum = 0;
-		foreach ($ngrams as $i => $ngram){
-			if (empty($ngram)){
-				continue;
-			}
-			foreach ($this->clusterQuerys[$c] as $q => $v){
-				//echo $q."\n";
-				if ( strstr($q, $ngram) !== false ){
+		for ($i = 0;$i < count($words); $i++){
+			$pattern = sprintf("#^%s#", quotemeta($words[$i]));
+			//$pattern = "#^".$words[$i]."#";
+			foreach ($this->clusterWords[$c] as $q => $v){
+				if ( preg_match($pattern, $q) > 0){
 					$sum += $v;
 				}
 			}
+			//echo $words[$i]."(".$sum.")\n";
+			//$total += $sum;
 		}
-		$prob = (double) $sum / (double) $this->clusterSum[$c];
+		$prob = (double) $sum / (double) $this->clusterSum[$c] / (double) count($words);
 		return $prob;
 	}
-	public function GetConceptFlowProb($c1) {
+	public function GetConceptFlowProb($c1, $step) {
 		// select the concept which can be reached from $c1 by 2 step
 		// the index of the array is cluster 's number, 
 		// the value of the array is always set to 1
 
-		$sql = sprintf(
-			"select `Cluster2`,`Prob` from `%s`
-			where `Cluster1` = %d and `Prob` > %lf 
-			order by `Prob` desc", 
-			$this->clusterFlowTB, $c1,0.0);
-			//echo $sql."\n";
-		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
-		while($row = mysql_fetch_row($result)){
-			//$clusterS[intval($row[0])] = -log( 1.0001 - doubleval($row[1]), 2 );
-			//echo $clusterS[intval($row[0])]."\n";
-			$clusterS[intval($row[0])] = doubleval($row[1]);
+		if ( isset($this->conceptFlowProb[$c1]) ){
+			$clusterS = $this->conceptFlowProb[$c1];
+		}// else it will be an empty array;
+
+		if ($step == 1){
+			//echo $step."\n";
+			return $clusterS;
 		}
+		//echo $step."\n";
 		$clusterS2 = array();
 		foreach ($clusterS as $c2 => $prob){
-			$sql = sprintf(
-				"select `Cluster2`,`Prob` from `%s`
-				where `Cluster1` = %d and `Prob` > %lf 
-				order by `Prob` desc", 
-				$this->clusterFlowTB, $c2,0.0);
-			$result = mysql_query($sql) or die($sql."\n".mysql_error());
-			while($row = mysql_fetch_row($result)){
-				$c3 = intval($row[0]);
-				//$newProb = -log( 1.0001 - doubleval($row[1]), 2);
-				$newProb = doubleval($row[1]);
-				if ( !isset($clusterS2[$c3]) 
-					|| $clusterS2[$c3] < $prob * $newProb ){
-						$clusterS2[$c3] = $prob * $newProb; // save the max one
-					}
+			if ( isset($this->conceptFlowProb[$c2]) ){
+				foreach( $this->conceptFlowProb[$c2] as $c3 => $newProb ){
+					if ( !isset($clusterS2[$c3]) 
+						|| $clusterS2[$c3] < $prob * $newProb ){
+							$clusterS2[$c3] = $prob * $newProb; // save the max one
+						}
+				}
 			}
 		}
 		foreach ($clusterS2 as $c3 => $prob){
@@ -273,17 +251,18 @@ class QueryCompletion{
 		}
 		arsort($completionProb);
 
+		/*
 		if (count($completionProb) > 20){	
 			$qs = array_keys($completionProb);
 			for ($i = count($qs) - 1;$i > 0; $i--){ // two different direction
 				for ($j = 0;$j <$i; $j++){
-					if ($concept[$qs[$i]] == $concept[$qs[$j]] && levenshtein($qs[$i], $qs[$j]) < 5){
+					if ($concept[$qs[$i]] == $concept[$qs[$j]] && levenshtein($qs[$i], $qs[$j]) < 4){
 						unset($completionProb[$qs[$i]]);// delete $i
 						break;
 					}
 				}
 			}
-		}
+		}*/
 		/* 
 		echo count($completionProb)."\n";
 		foreach ($completionProb as $q => $prob){
@@ -292,6 +271,7 @@ class QueryCompletion{
 		return $completionProb;
 	}
 	public function GetWordInConcept($clusterNum, $prefix){
+		// can speed up
 		// return a list of words start the input prefix
 		$sql = sprintf(
 			"select `Word` from `%s`
@@ -518,14 +498,39 @@ class QueryCompletion{
 		}
 		return $clusterS;
 	}
-	private function InitConceptQuerysCount(){
+	private function InitConceptWords(){
 		$sql = sprintf(
-			"select `ClusterNum`, sum(`NumOfQuery`) from `%s` group by `ClusterNum`", 
-			$this->queryTB);
+			"select `ClusterNum`, `Word`, `NumOfWord`  from `%s`", 
+			$this->wordTB);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$clusterS = array();
+		while($row = mysql_fetch_row($result)){
+			$clusterS[intval($row[0])][ addslashes($row[1]) ] = intval($row[2]);
+		}
+		return $clusterS;
+	}
+	private function InitConceptWordsCount(){
+		$sql = sprintf(
+			"select `ClusterNum`, sum(`NumOfWord`) from `%s` group by `ClusterNum`", 
+			$this->wordTB);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
 		while($row = mysql_fetch_row($result)){
 			$clusterS[intval($row[0])] = intval($row[1]);
+		}
+		return $clusterS;
+	}
+	private function InitConceptFlowProb(){
+		$sql = sprintf(
+			"select `Cluster1`, `Cluster2`,`Prob` from `%s`
+			where `Prob` > %lf 
+			order by `Cluster1` asc, `Prob` desc", 
+			$this->clusterFlowTB,0.0);
+		//echo $sql."\n";
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$clusterS = array();
+		while($row = mysql_fetch_row($result)){
+			$clusterS[intval($row[0])][intval($row[1])] = doubleval($row[2]);
 		}
 		return $clusterS;
 	}

@@ -80,7 +80,7 @@ class QueryCompletion{
 				}
 				//fprintf(STDERR, "c1 = $c1, c2 = $c2 q2 = %s prob1 = $prob prob2 = $prob2\n", $this->q2);
 			}
-			$limit = 1000;
+			$limit = 20;
 			if ( isset($tmpPool[$c1]) && count($tmpPool[$c1]) > $limit){
 				arsort($tmpPool[$c1]);
 				$i = 0;
@@ -143,49 +143,24 @@ class QueryCompletion{
 		return $prob;
 	}
 	public function GetConceptFlowProb($c1) {
-		// select the concept which can be reached from $c1 by 2 step
-		// the index of the array is cluster 's number, 
-		// the value of the array is always set to 1
+		// return a list of prob that start from c1
+		// the index of the array is cluster2's number, 
+		// the value of the array is prob of the corresponding flow
 
 		$sql = sprintf(
 			"select `Cluster2`,`Prob` from `%s`
 			where `Cluster1` = %d and `Prob` > %lf 
-			order by `Prob` desc", 
-			$this->clusterFlowTB, $c1,0.0);
+			order by `Prob` desc
+			limit 0, 1000
+			", 
+			$this->clusterFlowTB, $c1,$this->flowThreshold);
+			
 			//echo $sql."\n";
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
 		while($row = mysql_fetch_row($result)){
-			//$clusterS[intval($row[0])] = -log( 1.0001 - doubleval($row[1]), 2 );
-			//echo $clusterS[intval($row[0])]."\n";
 			$clusterS[intval($row[0])] = doubleval($row[1]);
 		}
-		$clusterS2 = array();
-		foreach ($clusterS as $c2 => $prob){
-			$sql = sprintf(
-				"select `Cluster2`,`Prob` from `%s`
-				where `Cluster1` = %d and `Prob` > %lf 
-				order by `Prob` desc", 
-				$this->clusterFlowTB, $c2,0.0);
-			$result = mysql_query($sql) or die($sql."\n".mysql_error());
-			while($row = mysql_fetch_row($result)){
-				$c3 = intval($row[0]);
-				//$newProb = -log( 1.0001 - doubleval($row[1]), 2);
-				$newProb = doubleval($row[1]);
-				if ( !isset($clusterS2[$c3]) 
-					|| $clusterS2[$c3] < $prob * $newProb ){
-						$clusterS2[$c3] = $prob * $newProb; // save the max one
-					}
-			}
-		}
-		foreach ($clusterS2 as $c3 => $prob){
-			if ( !isset($clusterS[$c3])){
-				$clusterS[$c3] = $prob;
-			}else{
-				$clusterS[$c3] +=$prob;
-			}
-		}
-		//echo "count of clusterS:".count($clusterS)."\n";
 		return $clusterS;
 	}
 	public function GetQueryCombination(){
@@ -248,7 +223,7 @@ class QueryCompletion{
 			arsort($queryPool[$c2]);
 		}
 		//return $queryPool;
-
+		
 		//rank the completion query
 		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
 		//arsort($completionProb);
@@ -261,7 +236,7 @@ class QueryCompletion{
 		foreach ($queryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
 				//if (preg_match($pattern, $q, $matches)){
-				//continue;
+					//continue;
 				//}
 				$product = $prob * $this->flowProb[$c2];
 				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
@@ -272,12 +247,12 @@ class QueryCompletion{
 			}
 		}
 		arsort($completionProb);
-
+		
 		if (count($completionProb) > 20){	
 			$qs = array_keys($completionProb);
 			for ($i = count($qs) - 1;$i > 0; $i--){ // two different direction
 				for ($j = 0;$j <$i; $j++){
-					if ($concept[$qs[$i]] == $concept[$qs[$j]] && levenshtein($qs[$i], $qs[$j]) < 5){
+					if (levenshtein($qs[$i], $qs[$j]) < 4){
 						unset($completionProb[$qs[$i]]);// delete $i
 						break;
 					}

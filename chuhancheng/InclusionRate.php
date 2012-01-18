@@ -11,12 +11,15 @@ class InclusionRate{
 		$this->N = 0;
 	}
 	protected function AddRecord($gt, $results){
+		$wwwPattern = "/(^www )|( com$)/";
+		$gt_m = preg_replace($wwwPattern, "", $gt);
 		for ($i = 0;$i< count($results); $i++){
-			if ($gt == $results[$i]){
+			if ( $gt == $results[$i] || $gt_m == $results[$i] ){
 				if ( !isset($this->hitAt[$i + 1]) ){
 					$this->hitAt[$i + 1] = 0;
 				}
 				$this->hitAt[$i + 1] +=1;
+				break;
 			}
 		}
 		$this->N +=1;
