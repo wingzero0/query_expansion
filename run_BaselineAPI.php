@@ -12,6 +12,16 @@ function run_Baseline($q1, $q2, $DBVerNum,$limit = 10){
 	$ret = $obj->GetMostFreqQuery();
 	return $ret; 
 }
+function run_PairFreq($q1, $q2, $DBVerNum,$limit = 10){
+	$para["q1"] = $q1;
+	$para["q2"] = trim($q2);
+	$para["qTB"] = "QueryCluster_".$DBVerNum."_Clean";//ignore
+	$para["wTB"] = "WordCluster_".$DBVerNum;// ignore
+	$obj = new QueryCompletionBaseline($para["q1"], $para["q2"], $para["qTB"],
+		$para["wTB"], 0, $limit);
+	$ret = $obj->GetMostFreqPair("pair_nqq_".$DBVerNum);
+	return $ret; 
+}
 //$ret = run_Baseline("apple", "a");
 //var_dump($ret);
 ?>

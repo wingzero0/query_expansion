@@ -1,6 +1,6 @@
 <?php
 // Class QueryCompletion wants to complete the query by concept matching.
-
+// 2step
 require_once(dirname(__FILE__)."/QuerySpliter.php");
 require_once(dirname(__FILE__)."/OnlineQueryClassify.php");
 require_once(dirname(__FILE__)."/connection.php");

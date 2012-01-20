@@ -1,12 +1,15 @@
 <?php
 // Class QueryCompletion wants to complete the query by concept matching.
-// with diversity (remove low edit distance in the same concept)
+// nothing
 
 require_once(dirname(__FILE__)."/QuerySpliter.php");
 require_once(dirname(__FILE__)."/OnlineQueryClassify.php");
 require_once(dirname(__FILE__)."/connection.php");
 require_once(dirname(__FILE__)."/NgramGenerate.php");
 //require_once(dirname(__FILE__)."/QueryGoogle.php");
+require_once(dirname(__FILE__)."/ParialQueryEntropy.php");
+require_once(dirname(__FILE__)."/QueryCompletionBaseline.php");
+
 mysql_select_db($database_cnn,$b95119_cnn);
 
 class QueryCompletion{
@@ -162,9 +165,19 @@ class QueryCompletion{
 		return $clusterS;
 	}
 	public function GetQueryCombination(){
+		/*
+		$e = $this->CheckEntropy();
+		if ($e >= 0.0 && $e <= 5.0){
+			//echo $this->q2 . $e ."\n";
+			$obj = new QueryCompletionBaseline($this->q1, $this->q2, $this->queryTBTight,
+					$this->wordTB, 6, 20);
+			$ret = $obj->GetMostFreqQuery();
+			return $ret; 	
+		}*/
 		$this->tValue = $this->InitTValue();
 		$this->clusterQuerys = $this->InitConceptQuerys();
 		$this->clusterSum = $this->InitConceptQuerysCount();
+
 		$words = $this->querySpliter->SplitTerm();
 		$conceptPool = $this->GetQueryConceptPool();
 		$orignalWords = "";
@@ -236,38 +249,16 @@ class QueryCompletion{
 	public function RankCompletionQueryAcrossConcepts($queryPool){
 		// rank Completion Query across different concepts
 		$completionProb = array();
-		//$pattern = "/( www )|( www com$)|( www$)/";
 		foreach ($queryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
-				//if (preg_match($pattern, $q, $matches)){
-				//continue;
-				//}
 				$product = $prob * $this->flowProb[$c2];
 				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
 					$completionProb[$q] = $product;
 					// assign new one
-					$concept[$q] = $c2;
 				}
 			}
 		}
 		arsort($completionProb);
-
-		if (count($completionProb) > 20){	
-			$qs = array_keys($completionProb);
-			for ($i = count($qs) - 1;$i > 0; $i--){ // two different direction
-				for ($j = 0;$j <$i; $j++){
-					if ($concept[$qs[$i]] == $concept[$qs[$j]] && levenshtein($qs[$i], $qs[$j]) < 4){
-						unset($completionProb[$qs[$i]]);// delete $i
-						break;
-					}
-				}
-			}
-		}
-		/* 
-		echo count($completionProb)."\n";
-		foreach ($completionProb as $q => $prob){
-			echo $q."(concept:". $concept[$q]. ")(prob:".$prob.")\n";
-		}*/
 		return $completionProb;
 	}
 	public function GetWordInConcept($clusterNum, $prefix){
@@ -459,13 +450,11 @@ class QueryCompletion{
 		}
 	}
 	protected function GetConceptQuerys($c){
-		// can speed up
 		// return a list of Querys in the given concept (cluster)
 		$sql = sprintf(
 			"select `Query`, `NumOfQuery` from `%s`
 			where `ClusterNum` = %d", 
 			$this->queryTBTight, $c);
-
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
 		while($row = mysql_fetch_row($result)){
@@ -561,6 +550,11 @@ class QueryCompletion{
 			$queryPool[$querys[$i]] = $tmpPool[$querys[$i]];
 		}
 		return $queryPool;
+	}
+	public function CheckEntropy(){
+		$obj = new ParialQueryEntropy();
+		$e = $obj->GetEntropy($this->queryTBTight, $this->q2);
+		return $e;
 	}	
 	public static function test(){
 		$obj = new QueryCompletion("haha", "schwab ha文 s", 

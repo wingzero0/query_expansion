@@ -46,6 +46,8 @@ while($pair = fgets($fd)){
 		//echo $test_next."\n";
 		
 		$ret = run_QueryCompletionWithFlowAndFreq($f_query, $test_next, 5);
+	}else if ($para["method"] == "pairandfreq"){
+		$ret = run_PairFreq($f_query, $test_next, 5);
 	}
 	
 	fwrite($fdout,$pair."\n");

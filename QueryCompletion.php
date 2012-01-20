@@ -1,5 +1,6 @@
 <?php
 // Class QueryCompletion wants to complete the query by concept matching.
+// with entropy
 
 require_once(dirname(__FILE__)."/QuerySpliter.php");
 require_once(dirname(__FILE__)."/OnlineQueryClassify.php");
@@ -496,6 +497,9 @@ class QueryCompletion{
 		return $clusterS;
 	}
 	public function GetQueryCombinationWithOtherMethod(){
+		$this->tValue = $this->InitTValue();
+		$this->clusterQuerys = $this->InitConceptQuerys();
+		$this->clusterSum = $this->InitConceptQuerysCount();
 		// --------------duplaicate partial code from GetQueryCombination -------------
 		$words = $this->querySpliter->SplitTerm();
 		$conceptPool = $this->GetQueryConceptPool();

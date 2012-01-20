@@ -1,5 +1,7 @@
 <?php
 // Class QueryCompletion wants to complete the query by concept matching.
+// two step and unigram prob
+// the diversity function is turned into comment
 
 require_once(dirname(__FILE__)."/QuerySpliter.php");
 require_once(dirname(__FILE__)."/OnlineQueryClassify.php");

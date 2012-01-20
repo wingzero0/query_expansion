@@ -6,6 +6,7 @@ class InclusionRate{
 	public $maxTop;
 	public $hitAt;
 	public $N;
+	public $filename;
 	public function __construct($maxTop) {
 		$this->maxTop = $maxTop;
 		$this->N = 0;
@@ -25,7 +26,9 @@ class InclusionRate{
 		$this->N +=1;
 	}
 	public function InclusionRateAtN($n){
-		ksort($this->hitAt);
+		if (!empty($this->hitAt)){
+			ksort($this->hitAt);
+		}
 		$sum = 0;
 		foreach($this->hitAt as $i=>$v){
 			if ($i > $n){
@@ -37,9 +40,17 @@ class InclusionRate{
 		return $rate;
 	}
 	public function InclusionRateUntilN($n){
-		ksort($this->hitAt);
+		if (!empty($this->hitAt)){
+			ksort($this->hitAt);
+		}
 		$sum = 0;
 		$rates = array();
+		if ($this->N == 0){
+			for ($i = 1; $i<= $n;$i++){
+				$rates[$i] = 0.0;
+			}
+			return $rates;
+		}
 		for ($i = 1; $i<= $n;$i++){
 			if ( isset($this->hitAt[$i]) ){
 				$sum += $this->hitAt[$i];
@@ -49,6 +60,7 @@ class InclusionRate{
 		return $rates;
 	}
 	public function SimpleReadFile($filename){
+		$this->filename = $filename;
 		$fp = fopen($filename, "r");
 		$line = fgets($fp);
 		$flag = false;

@@ -39,7 +39,27 @@ class QueryCompletionBaseline{
 			$completion[$q] = intval($row[1]);
 		}
 		return $completion;
+	}
+	public function GetMostFreqPair($pairTB){
+		$sql = sprintf(
+			"select `q2`, `pair_value` from `%s`
+			where `q1` = '%s' and `q2` like '%s%%' and `pair_value` > %d
+			order by `pair_value`",
+			$pairTB, $this->q1, $this->q2, $this->threshold
+		);
+		if ($this->limit >=1){
+			$sql .= " limit 0, ".$this->limit ;
+		}
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 
-	}	
+		//echo $sql."\n";
+		$completion = array(); 
+		while($row = mysql_fetch_row($result)){
+			$q = addslashes($row[0]);
+			$completion[$q] = intval($row[1]);
+		}
+		return $completion;
+	}
 }
+ 
 ?>
