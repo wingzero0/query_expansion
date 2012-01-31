@@ -127,7 +127,7 @@ class TTest{
 		$this->TTest($sws);
 	}
 	public static function test() {
-		$obj = new LLR("matrix_test", "word_test", "t_test", 200);
+		$obj = new TTest("matrix_test", "word_test", "t_test", 200);
 		$obj->Run();
 	}
 }

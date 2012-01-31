@@ -165,14 +165,6 @@ class QueryCompletion{
 		return $clusterS;
 	}
 	public function GetQueryCombination(){
-		$e = $this->CheckEntropy();
-		if ($e >= 0.0 && $e <= 5.0){
-			//echo $this->q2 . $e ."\n";
-			$obj = new QueryCompletionBaseline($this->q1, $this->q2, $this->queryTBTight,
-					$this->wordTB, 6, 20);
-			$ret = $obj->GetMostFreqQuery();
-			return $ret; 	
-		}
 		$this->tValue = $this->InitTValue();
 		$this->clusterQuerys = $this->InitConceptQuerys();
 		$this->clusterSum = $this->InitConceptQuerysCount();
@@ -238,17 +230,20 @@ class QueryCompletion{
 				arsort($queryPool[$c2]);
 			}
 		}
-		//return $queryPool;
+		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
+		//return $completionProb;
 		
 		//rank the completion query
-		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
-		//arsort($completionProb);
-		return $completionProb;
+		$e = $this->CheckEntropy();
+		//echo $e."\n";
+		$mostFreqQueryPool = $this->GetMostFreqQuery($this->q2);
+		$remixProb = $this->Remix($completionProb, $mostFreqQueryPool,$e);
+		return $remixProb;
 	}
-	public function RankCompletionQueryAcrossConcepts($queryPool){
+	public function RankCompletionQueryAcrossConcepts($conceptQueryPool){
 		// rank Completion Query across different concepts
 		$completionProb = array();
-		foreach ($queryPool as $c2 => $querys){
+		foreach ($conceptQueryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
 				$product = $prob * $this->flowProb[$c2];
 				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
@@ -259,6 +254,52 @@ class QueryCompletion{
 		}
 		arsort($completionProb);
 		return $completionProb;
+	}
+	public function Remix($completionProb, $mostFreq,$entropy){
+		// normalize
+		// assume the prob was sorted by desc
+		if ( !empty($completionProb) ){
+			$qs = array_keys($completionProb);
+			//print_r($qs);
+			$maxP = $completionProb[$qs[0]];
+			for ($i= 0;$i< count($qs);$i++){
+				$completionProb[$qs[$i]] /= $maxP;
+			}
+		}
+		//print_r($completionProb);
+		if ( !empty($mostFreq) ){
+			$qs = array_keys($mostFreq);
+			$maxP = $mostFreq[$qs[0]];
+			for ($i= 0;$i< count($qs);$i++){
+				$mostFreq[$qs[$i]] = (double) $mostFreq[$qs[$i]]  / (double)$maxP;
+			}
+		}
+		//print_r($mostFreq);
+
+		// remix
+		$remixProb = array();
+		$maxEntropy = 5.0;
+		$minEntropy = 0.0;
+		if ($entropy > $maxEntropy || $entropy == -1.0){
+			$entropy = $maxEntropy;
+		}else if ($entropy < $minEntropy){
+			$entropy = $minEntropy;
+		}
+		$alpha = ($entropy - $minEntropy) / ($maxEntropy - $minEntropy);
+		//echo "alpha:".$alpha."\n";
+		$beta = 1.0 - $alpha;
+		//echo "beta:".$beta."\n";
+		foreach($completionProb as $q => $prob){
+			$remixProb[$q] = $prob * $alpha;
+		}
+		foreach($mostFreq as $q => $prob){
+			if (!isset($remixProb[$q])){
+				$remixProb[$q] = 0.0;
+			}
+			$remixProb[$q] += $prob * $beta;
+		}
+		arsort($remixProb);
+		return $remixProb;
 	}
 	public function GetWordInConcept($clusterNum, $prefix){
 		// return a list of words start the input prefix
@@ -461,6 +502,25 @@ class QueryCompletion{
 		}
 		return $clusterS;
 	}
+	public function GetMostFreqQuery($q, $limit = -1){
+		$sql = sprintf(
+			"select `Query`, `NumOfQuery` from `%s`
+			where `Query` like '%s%%' 
+			order by `NumOfQuery` desc
+			", 
+			$this->queryTBTight, $q);
+		if ($limit >=1){
+			$sql .= " limit 0, ".$limit ;
+		}
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+
+		$completion = array(); 
+		while($row = mysql_fetch_row($result)){
+			$query = addslashes($row[0]);
+			$completion[$query] = intval($row[1]);
+		}
+		return $completion;
+	}
 	private function InitTValue(){
 		$sql = sprintf(
 			"select `Word1`, `Word2`, `TValue` from `%s`
@@ -511,7 +571,7 @@ class QueryCompletion{
 				$orignalWords.= " ".$words["word"][$i];
 			}
 		}
-		*/
+		 */
 		$queryPool = array();
 		$uniqueC2 = array();
 		if (empty($conceptPool)){
@@ -543,7 +603,7 @@ class QueryCompletion{
 			return $tmpPool;
 		} 
 		arsort($tmpPool);
-		
+
 		$querys = array_keys($tmpPool);
 		for ($i = 0; ($i< 10 && $i <count($querys)) ; $i++){
 			$queryPool[$querys[$i]] = $tmpPool[$querys[$i]];
