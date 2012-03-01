@@ -22,9 +22,11 @@ while($pair = fgets($fd)){
 	$next_term_array = explode(" ",$next_query);
 
 	if($term_number >= count($next_term_array)){
-		$test_next = $next_query;
-	}
-	else{
+		continue;
+		//$test_next = $next_query;
+	}else if ( $characters >= strlen($next_term_array[$term_number]) ){
+		continue;
+	}else{
 		$test_next="";
 		for($i=0; $i<$term_number;$i++){
 			$test_next = $test_next." ".$next_term_array[$i];
@@ -44,12 +46,12 @@ while($pair = fgets($fd)){
 	}else if ($para["method"] == "flowandfreq"){
 		//echo $f_query."\n";
 		//echo $test_next."\n";
-		
+
 		$ret = run_QueryCompletionWithFlowAndFreq($f_query, $test_next, 5);
 	}else if ($para["method"] == "pairandfreq"){
 		$ret = run_PairFreq($f_query, $test_next, 5);
 	}
-	
+
 	fwrite($fdout,$pair."\n");
 	$i = 0;
 	foreach($ret as $key => $value){
