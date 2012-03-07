@@ -1,10 +1,13 @@
 <?php
+// this program specifically writen for aol testing data.
+// it will dump the data with specificy t-value range
+//
+
 require("/home/b95119/query_expansion/connection.php");
 mysql_select_db($database_cnn,$b95119_cnn);
 
 if ($argc<5){
 	printf( "usage:php %s output upperThreshold lowerThreshold tTestTableName probTableName\n", basename(__FILE__));
-	//printf( "usage:php %s output upperThreshold lowerThreshold tTestTableName probTableName flowTableName clusterTbName\n", basename(__FILE__));
 	exit(-1);
 }
 $pair_nqq_out = $argv[1]; // output file name

@@ -101,7 +101,7 @@ class QueryCompletion{
 		}
 		return $conceptPool;
 	}
-	public function QueryGeneratingProb($c, $query){
+	public function QueryGeneratingProb($c, $query, $subStringFlag = true){
 		$ret = $this->nGenerate->ReplaceNewQuery($query);
 
 		$qWords = $this->nGenerate->GetQWords(); // for counting the number of term in NgramGenerate 
@@ -114,19 +114,29 @@ class QueryCompletion{
 		$ngrams2 = $this->nGenerate->GetNgrams($n -2);
 		//print_r($ngrams2);
 
-		$prob = $this->alpha * $this->NgramGeneratingProb($c, $ngrams); // the whole one
-		//echo "whole:".$prob."\n";
-		if ($ngrams1 != null){
-			$prob += $this->beta * $this->NgramGeneratingProb($c, $ngrams1) / 2;
-			//echo "plus 1:".$prob."\n";
-		}
-		if ($ngrams2 != null){
-			$prob += $this->gamma * $this->NgramGeneratingProb($c, $ngrams2) / 3;
-			//echo "plus 2:".$prob."\n";
+		if ($subStringFlag == true){
+			$prob = $this->alpha * $this->SubStringGeneratingProb($c, $ngrams); // the whole one
+			//echo "whole:".$prob."\n";
+			if ($ngrams1 != null){
+				$prob += $this->beta * $this->SubStringGeneratingProb($c, $ngrams1) / 2;
+				//echo "plus 1:".$prob."\n";
+			}
+			if ($ngrams2 != null){
+				$prob += $this->gamma * $this->SubStringGeneratingProb($c, $ngrams2) / 3;
+				//echo "plus 2:".$prob."\n";
+			}
+		}else{
+			$prob = $this->alpha * $this->NgramGeneratingProb($c, $ngrams); // the whole one
+			if ($ngrams1 != null){
+				$prob += $this->beta * $this->NgramGeneratingProb($c, $ngrams1) / 2;
+			}
+			if ($ngrams2 != null){
+				$prob += $this->gamma * $this->NgramGeneratingProb($c, $ngrams2) / 3;
+			}
 		}
 		return $prob;
 	}
-	private function NgramGeneratingProb($c, $ngrams){
+	private function SubStringGeneratingProb($c, $ngrams){
 		// return the summation probability of the ngrams
 		$sum = 0;
 		foreach ($ngrams as $i => $ngram){
@@ -137,6 +147,31 @@ class QueryCompletion{
 				//echo $q."\n";
 				if ( strstr($q, $ngram) !== false ){
 					$sum += $v;
+				}
+			}
+		}
+		$prob = (double) $sum / (double) $this->clusterSum[$c];
+		return $prob;
+	}
+	private function NgramGeneratingProb($c, $ngrams){
+		// return the summation probability of the ngrams
+		// the difference between this fuction and NgramsGeneratingProb is that
+		// this function will consider as matching only if two terms are the same. 
+		// SubStringGeneratingProb will match if ngram term is the substring of the q
+
+		$sum = 0;
+		foreach ($ngrams as $i => $ngram){
+			$ngram = quotemeta($ngram);
+			if (empty($ngram)){
+				continue;
+			}
+			
+			$pattern = sprintf("#(^%s$)|(^%s )|( %s$)|( %s )#", $ngram, $ngram, $ngram, $ngram);
+			#fprintf(STDERR, "%s\n", $pattern);
+			foreach ($this->clusterQuerys[$c] as $q => $v){
+				//echo $q."\n";
+				if (preg_match($pattern, $q, $matches)){
+					$sum += $v;	
 				}
 			}
 		}
@@ -155,8 +190,8 @@ class QueryCompletion{
 			limit 0, 1000
 			", 
 			$this->clusterFlowTB, $c1,$this->flowThreshold);
-			
-			//echo $sql."\n";
+
+		//echo $sql."\n";
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$clusterS = array();
 		while($row = mysql_fetch_row($result)){
@@ -165,15 +200,6 @@ class QueryCompletion{
 		return $clusterS;
 	}
 	public function GetQueryCombination(){
-		/*
-		$e = $this->CheckEntropy();
-		if ($e >= 0.0 && $e <= 5.0){
-			//echo $this->q2 . $e ."\n";
-			$obj = new QueryCompletionBaseline($this->q1, $this->q2, $this->queryTBTight,
-					$this->wordTB, 6, 20);
-			$ret = $obj->GetMostFreqQuery();
-			return $ret; 	
-		}*/
 		$this->tValue = $this->InitTValue();
 		$this->clusterQuerys = $this->InitConceptQuerys();
 		$this->clusterSum = $this->InitConceptQuerysCount();
@@ -227,6 +253,7 @@ class QueryCompletion{
 						if (preg_match($wwwPattern, $newQuery, $matches)){
 							continue;
 						}
+						//$prob = $this->QueryGeneratingProb($c2, $newQuery, false); // it can replace by google filter				
 						$prob = $this->QueryGeneratingProb($c2, $newQuery); // it can replace by google filter				
 						//$num = $this->QueryFilter($newQuery);
 						$queryPool[$c2][$newQuery] = $prob;
@@ -240,7 +267,7 @@ class QueryCompletion{
 			}
 		}
 		//return $queryPool;
-		
+
 		//rank the completion query
 		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
 		//arsort($completionProb);
@@ -512,7 +539,7 @@ class QueryCompletion{
 				$orignalWords.= " ".$words["word"][$i];
 			}
 		}
-		*/
+		 */
 		$queryPool = array();
 		$uniqueC2 = array();
 		if (empty($conceptPool)){
@@ -544,7 +571,7 @@ class QueryCompletion{
 			return $tmpPool;
 		} 
 		arsort($tmpPool);
-		
+
 		$querys = array_keys($tmpPool);
 		for ($i = 0; ($i< 10 && $i <count($querys)) ; $i++){
 			$queryPool[$querys[$i]] = $tmpPool[$querys[$i]];
