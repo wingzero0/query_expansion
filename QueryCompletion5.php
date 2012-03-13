@@ -253,8 +253,8 @@ class QueryCompletion{
 						if (preg_match($wwwPattern, $newQuery, $matches)){
 							continue;
 						}
-						//$prob = $this->QueryGeneratingProb($c2, $newQuery, false); // it can replace by google filter				
-						$prob = $this->QueryGeneratingProb($c2, $newQuery); // it can replace by google filter				
+						$prob = $this->QueryGeneratingProb($c2, $newQuery, false); // it can replace by google filter				
+						//$prob = $this->QueryGeneratingProb($c2, $newQuery); // it can replace by google filter				
 						//$num = $this->QueryFilter($newQuery);
 						$queryPool[$c2][$newQuery] = $prob;
 						//$queryPool[$c2][$newQuery] = $num;

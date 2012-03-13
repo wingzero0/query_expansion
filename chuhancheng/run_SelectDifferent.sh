@@ -1,11 +1,7 @@
 #!/bin/bash
 #
 
-path1=$1
-path2=$2
-outpath=$3
+inPath=$1
+outPath=$2
 
-for ((i=100;i>=30;i=i-10))
-do
-	php run_SelectDifferent.php -f1 $path1/Aol_pair_nqq_$i/match_0_2.txt -f2 $path2/Aol_pair_nqq_$i/match_0_2.txt -o1 $outpath/copmletion_$i.txt -o2 $outpath/baseline_$i.txt
-done
+php run_SelectDifferent.php -f1 $inPath/baseline_all.txt -f2 $inPath/completion_all.txt -o1 $outPath/baseline_r.txt -o2 $outPath/completion_r.txt

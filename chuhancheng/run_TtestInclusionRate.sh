@@ -1,5 +1,5 @@
 #!/bin/bash
-# bash run_InclusionRate.sh inputPath/ outputPath/ method
+# bash run_TtestInclusionRate.sh inputPath/ outputPath/ method
 
 inputPath=$1
 outputPath=$2
