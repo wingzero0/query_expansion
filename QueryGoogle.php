@@ -31,26 +31,64 @@ class QueryGoogle{
 		$num =  intval( str_replace(",", "", $ret[2]->innertext()) );
 		return $num;
 	}
-	public function Recommendation(){
-		$html = $this->QueryGooglePage();
-		$ret = $html->find("div[id=center_col]");
-		if ($ret == null){
-			fprintf(STDERR,"can't get center_col\n");
-			return 0;
+	public function Recommendation($html = null){
+		if ($html == null){
+			$html = $this->QueryGooglePage();
 		}
-		$e = $ret[0]->first_child()->next_sibling();
+		$q = $this->FindQuery($html);
+		$center_col = $html->find("div[id=center_col]"); // find the main block
+		if ($center_col == null){
+			fprintf(STDERR,"can't get center_col for query:%s\n", $q);
+			return null;
+		}
+		// search the term "Searches related to"
+		$pattern = "Searches related to";
+		if ( strstr($center_col[0]->innertext, $pattern) == null ){
+			fprintf(STDERR,"no search related for query:%s\n", $q);
+			return null;
+		}
 		
-		$strHtml = str_get_html($e->outertext());
-		$ret = $strHtml->find("p");
-		if ($ret == null){
-			fprintf(STDERR,"format error can't get <p></q>\n");
-			return 0;
+		// there will be two places contain query suggestions
+		$flag = false;
+		$p = null; 
+		$e = $center_col[0]->first_child()->next_sibling();
+		if ($e != null){
+			$strHtml = str_get_html($e->outertext());
+			$p = $strHtml->find("p");
+			if ($p == null){
+				$flag = true; // search again
+			}
+		}else{
+			// $flag can't be true
 		}
-		$suggestion = array();
-		foreach($ret as $e){
-			$suggestion[] = $e->plaintext."\n";
+		
+		if ($flag == true){
+			$e = $center_col[0]->first_child()->next_sibling()->next_sibling();
+			if ($e != null){
+				$strHtml = str_get_html($e->outertext());
+				$p = $strHtml->find("p");
+			}
 		}
-		return $suggestion;
+		//echo $e->outertext()."\n";
+		
+		if ($p == null){
+			fprintf(STDERR,"format error can't get <p></q> for query:%s\n", $q);
+			return null;
+		}
+		$ret["query"] = $q;
+		$ret["suggestion"] = array();
+		foreach($p as $e){
+			$ret["suggestion"][] = $e->plaintext;
+		}
+		return $ret;
+	}
+	public function FindQuery($html){
+		$ret = $html->find("input[title=Search]"); // find the main block
+		if ($ret != null){
+			return $ret[0]->value;
+		}else{
+			return null;
+		}
 	}
 	public function QueryGooglePage(){
 		$query = $this->qs[0];
@@ -65,16 +103,21 @@ class QueryGoogle{
 		$html = file_get_html($url);
 		return $html;		
 	}
-	public static function test() {
-		$obj = new QueryGoogle("pchome");
-		//$numOfResult = $obj->NumOfResults();
-		//echo $numOfResult."\n";
-		$s = $obj->Recommendation();
-		print_r($s);
+	public function DumpHtml(){
+		$html = $this->QueryGooglePage();
+		echo $html->outertext."\n";
 	}
 	public function SetQuery($query){
 		$this->q = $query;
 		$this->qs = mb_split("\s", $this->q);
+	}
+	public static function test() {
+		$obj = new QueryGoogle("");
+		$html = file_get_html("./nearestCompletion/tmp.html");
+		//$numOfResult = $obj->NumOfResults();
+		//echo $numOfResult."\n";
+		$s = $obj->Recommendation($html);
+		print_r($s);
 	}
 }
 
