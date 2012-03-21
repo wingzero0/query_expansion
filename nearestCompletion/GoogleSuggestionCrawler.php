@@ -9,17 +9,18 @@ require_once(dirname(__FILE__)."/../simple_html_dom.php");
 mysql_select_db($database_cnn,$b95119_cnn);
 
 class GoogleSuggestionCrawler{
-	protected $ub; //upper bound
-	protected $lb; //lower bound
+	//protected $ub; //upper bound
+	//protected $lb; //lower bound
 	public $qGoogle;
-	private $tb; //table name
-	public function __construct($ub, $lb, $tb){
+	//private $tb; //table name
+	public function __construct(){
 		$this->qGoogle = new QueryGoogle("");
-		$this->ub = $ub;
-		$this->lb = $lb;
-		$this->tb = $tb;
+		//$this->ub = $ub;
+		//$this->lb = $lb;
+		//$this->tb = $tb;
 	}
 	public function LoadDbAndCrawlRecommendation(){
+		//useless
 		$sql = sprintf(
 			"select `word` from `%s` where `value` >= %d and `value` <= %d order by `value` desc",
 			$this->tb, $this->lb, $this->ub
@@ -47,25 +48,56 @@ class GoogleSuggestionCrawler{
 			$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		}
 	}
-	public function SaveHtmlOnly($path){
+	public function QueryTbToHtml($upperBound,$lowerBound, $table,$savePath){
 		$sql = sprintf(
 			"select `word`, `rowID` from `%s` where `value` >= %d and `value` <= %d order by `value` desc",
-			$this->tb, $this->lb, $this->ub
+			$table, $lowerBound, $upperBound
 		);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		while($row = mysql_fetch_row($result)){
 			echo $row[0]."\n";
 			$this->qGoogle->SetQuery($row[0]);
 			$html = $this->qGoogle->QueryGooglePage();
-			$fp = fopen($path."/".$row[1].".html", "w");
+			$fp = fopen($savePath."/".$row[1].".html", "w");
 			if ($fp == null){
-				fprintf(STDERR, $path."/".$row[1]."html can't be open\n");
+				fprintf(STDERR, $savePath."/".$row[1]."html can't be open\n");
 			}else{
 				fprintf($fp, "%s", $html->outertext);
 				fclose($fp);
 			}
 			sleep(1);
 		}
+	}
+	public function QueryFileToHtml($qFile, $savePath){
+		$fp = fopen($qFile, "r");
+		if ($fp == null){
+			fprintf(STDERR, "%s can't be opened\n", $qFile);
+			return null;
+		}
+		$pattern = "/\t/";
+		while($line = fgets($fp)){
+			$line = trim($line);
+			if ( empty($line) ){
+				continue;
+			}
+			$list = preg_split($pattern, $line);
+			$id = $list[0];
+			$q = $list[1];
+			
+			echo $id."\t".$q."\n";
+			
+			$this->qGoogle->SetQuery($q);
+			$html = $this->qGoogle->QueryGooglePage();
+			$fpw = fopen($savePath."/".$id.".html", "w");
+			if ($fpw == null){
+				fprintf(STDERR, $savePath."/".$id.".html can't be open\n");
+			}else{
+				fprintf($fpw, "%s", $html->outertext);
+				fclose($fpw);
+			}
+			sleep(1);
+			
+		}	
 	}
 	public function HtmlFileRecommendationToDb($file){
 		//$suggestion = array();

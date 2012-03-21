@@ -9,7 +9,7 @@ $para = ParameterParser($argc, $argv);
 $keys = array("path");
 $ret = ParameterChecking($keys, $para);
 
-$obj = new GoogleSuggestionCrawler(0, 0, "Aol_SingleQ"); // the argument is useless
+$obj = new GoogleSuggestionCrawler(); // the argument is useless
 $obj->PathFileRecommendationToDb($para["path"]);
 
 ?>
