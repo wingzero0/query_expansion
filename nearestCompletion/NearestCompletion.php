@@ -38,10 +38,13 @@ class NearestCompletion{
 			$ngram = addslashes($row[1]);
 			$v2s[$q][$ngram] = doubleval($row[2]);
 		}
+		$sim = array();
 		foreach ($v2s as $q => $v2){
 			$sim[$q] = $this->similarity($v1, $v2);
 		}
-		arsort($sim);
+		if (!empty($sim)){
+			arsort($sim);
+		}
 		return $sim;
 	}
 	public function similarity($v1, $v2){
@@ -62,5 +65,5 @@ class NearestCompletion{
 		print_r($ret);
 	}
 }
-NearestCompletion::test();
+//NearestCompletion::test();
 ?>

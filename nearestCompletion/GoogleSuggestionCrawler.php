@@ -81,6 +81,10 @@ class GoogleSuggestionCrawler{
 				continue;
 			}
 			$list = preg_split($pattern, $line);
+			if (count($list) > 2){
+				fprintf(STDERR, "contain one more 'tab':%s\n", $line);
+				continue;
+			}
 			$id = $list[0];
 			$q = $list[1];
 			
@@ -135,6 +139,57 @@ class GoogleSuggestionCrawler{
 	}
 }
 
+class SecondTier{
+	public function SelectUnexpanseQ2($tb){
+		$sql = sprintf(
+			"select distinct(`q1`) from `%s`", $tb
+		);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$q1 = array();
+		while($row = mysql_fetch_row($result)){
+			$q1[$row[0]] = true;
+		}
+		
+		$sql = sprintf(
+			"select distinct(`q2`) from `%s`", $tb
+		);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$unq2 = array();
+		while($row = mysql_fetch_row($result)){
+			if ( !isset($q1[$row[0]]) ){
+				$unq2[] = $row[0];
+			}
+		}
+		
+		return $unq2;
+	}
+	public function DumpUnexpanseQ2($outfile) {
+		$unq2 = $this->SelectUnexpanseQ2("RelatedQuery");
+		$num = ceil( count($unq2) / 10000.0 );
+		for ($i = 0;$i < $num ;$i++){
+			$filename = sprintf("%s.%d", $outfile, $i);
+			$fp[$i] = fopen($filename, "w");
+			if ($fp[$i] == null){
+				fprintf(STDERR, $filename ." can't be open\n");
+				return;
+			}
+		}
+		foreach ($unq2 as $i => $q2){
+			//if ($i % 10000 == 0){
+				
+			//}
+			$fpo = $fp[ floor($i / 10000.0) ];
+			fprintf($fpo, "%d\t%s\n", $i, $q2);
+		}
+		for ($i = 0;$i < $num ;$i++){
+			fclose($fp[$i]);
+		}
+	}
+	public static function test(){
+		$obj = new SecondTier();
+		$obj->DumpUnexpanseQ2("unexpanseQ2");
+	}
+}
 //GoogleSuggestionCrawler::test();
-
+SecondTier::test();
 ?>

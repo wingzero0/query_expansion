@@ -1,0 +1,1 @@
+<?php// please input the query at argv[1]require_once(dirname(__FILE__)."/../QueryGoogle.php");$obj = new QueryGoogle($argv[1]);$obj->DumpHtml();//$s = $obj->Recommendation();//print_r($s);?>

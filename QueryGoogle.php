@@ -53,10 +53,15 @@ class QueryGoogle{
 		$p = null; 
 		$e = $center_col[0]->first_child()->next_sibling();
 		if ($e != null){
-			$strHtml = str_get_html($e->outertext());
-			$p = $strHtml->find("p");
-			if ($p == null){
+			// double check for false matching.
+			$pattern = "Searches related to";
+			if ( strstr($e->innertext, $pattern) == null ){
 				$flag = true; // search again
+			}else{
+				$p = $e->find("p");
+				if ($p == null){
+					$flag = true; // search again
+				}
 			}
 		}else{
 			// $flag can't be true
@@ -113,7 +118,7 @@ class QueryGoogle{
 	}
 	public static function test() {
 		$obj = new QueryGoogle("");
-		$html = file_get_html("./nearestCompletion/tmp.html");
+		$html = file_get_html("./nearestCompletion/661788.html");
 		//$numOfResult = $obj->NumOfResults();
 		//echo $numOfResult."\n";
 		$s = $obj->Recommendation($html);

@@ -9,7 +9,7 @@ method=$3
 
 for t in 0 1
 do
-	for c in 1 2 3
+	for c in 1 2 3 4
 	do
 		php run_Recommendation.php -t $t -c $c -input $inputPath/200_10.txt -method $method -o "$outputPath"/ttest_"$t"_"$c"/"$method"_200_10.txt &
 		php run_Recommendation.php -t $t -c $c -input $inputPath/10_5.txt -method $method -o "$outputPath"/ttest_"$t"_"$c"/"$method"_10_5.txt &

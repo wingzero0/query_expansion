@@ -1,5 +1,6 @@
 <?php
-require_once("/home/b95119/query_expansion/QueryCompletionBaseline.php");
+require_once(dirname(__FILE__)."/QueryCompletionBaseline.php");
+require_once(dirname(__FILE__)."/nearestCompletion/NearestCompletion.php");
 
 function run_Baseline($q1, $q2, $DBVerNum,$limit = 10){
 	$para["q1"] = $q1;
@@ -21,6 +22,11 @@ function run_PairFreq($q1, $q2, $DBVerNum,$limit = 10){
 		$para["wTB"], 0, $limit);
 	$ret = $obj->GetMostFreqPair("pair_nqq_".$DBVerNum);
 	return $ret; 
+}
+function run_Nearest($q1, $q2){
+	$obj = new NearestCompletion($q1, $q2, "AolNgramVector");
+	$nearest = $obj->GetCompletion();
+	return $nearest;
 }
 //$ret = run_Baseline("apple", "a");
 //var_dump($ret);

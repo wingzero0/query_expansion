@@ -50,15 +50,19 @@ while($pair = fgets($fd)){
 		$ret = run_QueryCompletionWithFlowAndFreq($f_query, $test_next, 5);
 	}else if ($para["method"] == "pairandfreq"){
 		$ret = run_PairFreq($f_query, $test_next, 5);
+	}else if ($para["method"] == "nearest"){
+		$ret = run_Nearest($f_query, $test_next);
 	}
 
 	fwrite($fdout,$pair."\n");
 	$i = 0;
-	foreach($ret as $key => $value){
-		fwrite($fdout,"\t".$key."\n");
-		$i++;
-		if ($i >= 10){
-			break;
+	if (!empty($ret)){
+		foreach($ret as $key => $value){
+			fwrite($fdout,"\t".$key."\n");
+			$i++;
+			if ($i >= 10){
+				break;
+			}
 		}
 	}
 }
