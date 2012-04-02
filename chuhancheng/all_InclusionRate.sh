@@ -7,7 +7,7 @@ method=$3
 
 for t in 0 1
 do 
-	for c in 1 2 3
+	for c in 1 2 3 4
 	do 
 		for ((i=100;i>=10;i=i-10))
 		do

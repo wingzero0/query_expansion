@@ -30,8 +30,8 @@ while ($pair = fgets($fp)){
 	$num = intval($pair_array[0]); // the number of pair appears
 	$q1 = trim($pair_array[1]);
 	$q2 = trim($pair_array[2]);
-	//if ( isset($qs[$q1]) && isset($qs[$q2]) ){
-	if ( isset($qs[$q1]) ){// for aol pair nqq 
+	if ( isset($qs[$q1]) && isset($qs[$q2]) ){ // for msn pair nqq
+	//if ( isset($qs[$q1]) ){// for aol pair nqq 
 		$sql = sprintf(
 			"INSERT INTO `%s` (`q1`, `q2`, `pair_value`) 
 			VALUES ('%s', '%s', %d);", 
