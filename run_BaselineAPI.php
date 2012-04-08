@@ -24,7 +24,7 @@ function run_PairFreq($q1, $q2, $DBVerNum,$limit = 10){
 	return $ret; 
 }
 function run_Nearest($q1, $q2){
-	$obj = new NearestCompletion($q1, $q2, "AolNgramVector");
+	$obj = new NearestCompletion($q1, $q2, "NgramVector");
 	$nearest = $obj->GetCompletion();
 	return $nearest;
 }

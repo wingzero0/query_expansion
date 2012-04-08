@@ -1,6 +1,7 @@
 <?php
 // class RecommendationTree construct the data set of the NearestCompletion method 
 define("DB",1);
+define("FILE",2);
 require_once(dirname(__FILE__)."/../connection.php");
 
 mysql_select_db($database_cnn,$b95119_cnn);
@@ -10,15 +11,35 @@ class RecommendationTree{
 	private $ngramTb; // n-gram list table
 	private $vectorTb; // n-gram table with vector 
 	private $trees;
-	public function __construct($relateTb, $tmpNgramTb, $vectorTb){
-		$this->rTb = $relateTb;
-		$this->ngramTb = $tmpNgramTb;
-		$this->vectorTb = $vectorTb;
+	public function __construct(){
 		$this->trees = null;
 	}
-	public function LoadRelatedQ(){
+	public function LoadRelatedQFile($filename){
+		$fp = fopen($filename, "r");
+		if ($fp == null){
+			fprintf(STDERR,"%s can't be open\n", $filename);
+			return array();
+		}
+		$relatedQ = array();
+		while ( $line = fgets($fp) ){
+			$list = preg_split("/\t|\n/", trim($line) );
+			if (count($list) != 2){
+				fprintf(STDERR,"line error:\n%s", $line);
+				continue;
+			}
+			$q1 = addslashes($list[0]);
+			$q2 = addslashes($list[1]);
+			if ( !isset($relatedQ[$q1]) ){
+				$relateQ[$q1] = array();
+			}
+			$relatedQ[$q1][] = $q2;
+		}
+		fclose($fp);
+		return $relatedQ;
+	}
+	public function LoadRelatedQDB($relateTb){
 		$sql = sprintf(
-			"select `q1`, `q2` from `%s`", $this->rTb
+			"select `q1`, `q2` from `%s` where `q1` != `q2`", $relateTb
 		);
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 		$relatedQ = array();
@@ -35,14 +56,19 @@ class RecommendationTree{
 	}
 	public function ConstructTrees($relatedQ, $depth) {
 		$trees = array();
+		/*
 		foreach ($relatedQ as $q1 => $v){
-			$trees[$q1][0] = array();
+			$trees[$q1][1] = array();
 			foreach ($v as $q2){
-				$trees[$q1][0][] = $q2;
+				$trees[$q1][1][] = $q2;
 			}
+		}*/
+		foreach ($relatedQ as $q1 => $v){
+			$trees[$q1][0][0] = $q1;
 		}
-		
 		foreach ($trees as $q1 => $layer){
+			$unique = array(); // reduce loop expand
+			$unique[$q1] = true;
 			for ($i = 0; $i < $depth; $i++){
 				if ( !isset($trees[$q1][$i]) ){
 					break;
@@ -51,7 +77,10 @@ class RecommendationTree{
 				foreach ($trees[$q1][$i] as $j => $q2){
 					if ( isset($relatedQ[$q2]) ){
 						foreach ($relatedQ[$q2] as $k => $q3){
-							$trees[$q1][$i+1][] = $q3;
+							if ( !isset($unique[$q3]) ){
+								$trees[$q1][$i+1][] = $q3;
+								$unique[$q3] = true;
+							}
 						}
 					}
 				}
@@ -60,7 +89,7 @@ class RecommendationTree{
 		$this->trees = $trees;
 		return $trees;
 	}
-	public function SaveTreeNgram($trees){		
+	public function SaveTreeNgramDB($trees, $ngramTb){		
 		foreach ($trees as $q1 => $depthArray){
 			$unique = array(); // clear
 			foreach( $depthArray as $i => $qArray ){
@@ -74,22 +103,23 @@ class RecommendationTree{
 					}
 				}
 			}
+
 			foreach($unique as $ngram => $v){
 				$sql = sprintf(
 					"insert into `%s` (`query`, `ngram`) values ('%s', '%s')",
-					$this->ngramTb , $q1, $ngram
+					$ngramTb , $q1, $ngram
 				);
 				$result = mysql_query($sql) or die($sql."\n".mysql_error());
 			}
 		}
 	}
-	public function NgramIDF($flag) {
+	public function NgramIDF($flag, $sourceName) {
 		$idf = array();
 		if ($flag == DB){
 			echo "reading DB\n";
 			
 			$sql = sprintf(
-				"SELECT count(distinct(`query`)) FROM `%s`", $this->ngramTb
+				"SELECT count(distinct(`query`)) FROM `%s`", $sourceName
 			);
 			$result = mysql_query($sql) or die($sql."\n".mysql_error());
 			$row = mysql_fetch_row($result);
@@ -110,7 +140,7 @@ class RecommendationTree{
 			}
 		}else {
 			if ($this->trees == null){
-				$rq = $this->LoadRelatedQ();
+				$rq = $this->LoadRelatedQFile($sourceName);
 				$this->trees = $this->ConstructTrees($rq, 2);
 			}
 			$unique = array();
@@ -129,6 +159,7 @@ class RecommendationTree{
 						}
 					}
 				}
+				// counting
 				foreach ($tmp as $ngram => $v){
 					if ( !isset($unique[$ngram]) ){
 						$unique[$ngram] = 0;
@@ -168,16 +199,52 @@ class RecommendationTree{
 		}
 		return $vector;
 	}
-	public function SaveVector($vector){
+	public function SaveVectorDB($vector, $vectorTb){
 		foreach($vector as $q1 => $ngrams){
 			foreach ($ngrams as $ngram => $v){
 				$sql = sprintf(
 					"insert into `%s` (`query`, `ngram`, `value`) values ('%s', '%s', %lf)",
-					$this->vectorTb , $q1, $ngram, $v
+					$vectorTb , $q1, $ngram, $v
 					);
 				$result = mysql_query($sql) or die($sql."\n".mysql_error());
 			}
 		}
+	}
+	public function SaveVectorFile($vector, $filename){
+		$fp = fopen($filename, "w");
+		if ($fp == null){
+			fprintf(STDERR,"%s can't be open\n", $filename);
+			return;
+		}
+		foreach($vector as $q1 => $ngrams){
+			foreach ($ngrams as $ngram => $v){
+				fprintf($fp , "%s\t%s\t%lf\n", $q1, $ngram, $v);
+			}
+		}
+		fclose($fp);
+	}
+	public function SaveVectorFromFileToDB($filename, $vectorTb){
+		$fp = fopen($filename, "r");
+		if ($fp == null){
+			fprintf(STDERR,"%s can't be open\n", $filename);
+			return;
+		}
+		while ( $line = fgets($fp) ){
+			$list = preg_split("/\t/", trim($line) );
+			if (count($list) != 3){
+				fprintf(STDERR,"line error:\n%s", $line);
+				continue;
+			}
+			$q1 = $list[0];
+			$ngram = $list[1];
+			$v = doubleval($list[2]);
+			$sql = sprintf(
+				"insert into `%s` (`query`, `ngram`, `value`) values ('%s', '%s', %lf)",
+				$vectorTb , $q1, $ngram, $v
+			);
+			$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		}
+		fclose($fp);
 	}
 	public static function DepthWeight($depth){
 		if ($depth >=0){
