@@ -79,10 +79,18 @@ class SelectDifferent{
 		$this->data2 = $this->LoadPosition($this->fp2);
 	}
 	protected function FindRank($gt, $results){
-		if ( !isset($results["results"][$gt]) ){
+		$wwwPattern = "/(^www )|( com$)/";
+		$gt_m = preg_replace($wwwPattern, "", $gt);
+		if ( !isset($results["results"][$gt]) && !isset($results["results"][$gt_m])){ //both not set
 			return -1;// infinite
+		}else if ( !isset($results["results"][$gt]) ){ // one not set
+			return $results["results"][$gt_m];
+		}else if ( !isset($results["results"][$gt_m]) ){ // one not set
+			return $results["results"][$gt];
+		}else if ($results["results"][$gt] < $results["results"][$gt_m]){ // both set
+			return $results["results"][$gt];
 		}else{
-			return $results["results"][$gt];// the rank
+			return $results["results"][$gt_m];
 		}
 	}
 	public function FindDifferent(){

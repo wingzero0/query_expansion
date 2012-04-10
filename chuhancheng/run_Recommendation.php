@@ -51,7 +51,7 @@ while($pair = fgets($fd)){
 	}else if ($para["method"] == "pairandfreq"){
 		$ret = run_PairFreq($f_query, $test_next, 5);
 	}else if ($para["method"] == "nearest"){
-		$ret = run_Nearest($f_query, $test_next);
+		$ret = run_Nearest($f_query, $test_next, 5);
 	}
 
 	fwrite($fdout,$pair."\n");

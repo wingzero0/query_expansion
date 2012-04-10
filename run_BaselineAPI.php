@@ -23,9 +23,10 @@ function run_PairFreq($q1, $q2, $DBVerNum,$limit = 10){
 	$ret = $obj->GetMostFreqPair("pair_nqq_".$DBVerNum);
 	return $ret; 
 }
-function run_Nearest($q1, $q2){
-	$obj = new NearestCompletion($q1, $q2, "NgramVector");
-	$nearest = $obj->GetCompletion();
+function run_Nearest($q1, $q2, $DBVerNum){
+	$para["qTB"] = "QueryCluster_".$DBVerNum."_Clean";
+	$obj = new NearestCompletion($q1, $q2, "NgramVector", $para["qTB"]);
+	$nearest = $obj->GetCompletion(true);
 	return $nearest;
 }
 //$ret = run_Baseline("apple", "a");

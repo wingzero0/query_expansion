@@ -1,7 +1,7 @@
 <?php
 //sample usage:
 //php run_QueryCompletion.php -q1 "haha" -q2 "schwab ha文 s"
-require_once("/home/b95119/query_expansion/QueryCompletion.php");
+require_once("/home/b95119/query_expansion/QueryCompletion5.php");
 
 function run_QueryCompletion($q1, $q2, $DBVerNum){
 	$para["q1"] = $q1;
@@ -9,6 +9,7 @@ function run_QueryCompletion($q1, $q2, $DBVerNum){
 	$para["qTB"] = "QueryCluster_".$DBVerNum;
 	$para["wTB"] = "WordCluster_".$DBVerNum;
 	$para["qTBTight"] = "QueryCluster_".$DBVerNum."_Clean";
+	//$para["qTBTight"] = "QueryCluster_".$DBVerNum;
 	$para["cFlowTB"] = "ClusterFlowProb_".$DBVerNum;
 	$para["llrTB"] = "t_test_".$DBVerNum;
 	$para["threshlod"] = "0.0";

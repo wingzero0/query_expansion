@@ -215,12 +215,12 @@ class QueryCompletion{
 		}
 		$queryPool = array();
 		$uniqueC2 = array();
-		if (empty($conceptPool)){
+		//if (empty($conceptPool)){
 			//fprintf(STDERR,"conceptPool is empty\n");
-			$emptyArray = array();
-			return $emptyArray;//return the empty array()
+			//$emptyArray = array();
+			//return $emptyArray;//return the empty array()
 			//return -1;
-		}
+		//}
 		foreach ($conceptPool as $c1 => $c2Set){
 			foreach ($c2Set as $c2 => $prob){
 				if ( !isset($uniqueC2[$c2]) || $prob > $uniqueC2[$c2] ){
@@ -298,8 +298,20 @@ class QueryCompletion{
 			$qs = array_keys($completionProb);
 			//print_r($qs);
 			$maxP = $completionProb[$qs[0]];
-			for ($i= 0;$i< count($qs);$i++){
-				$completionProb[$qs[$i]] /= $maxP;
+			if ($maxP > 0){
+				for ($i= 0;$i< count($qs);$i++){
+					$completionProb[$qs[$i]] /= $maxP;
+				}
+			}else{
+				// if $maxP == 0, all list in completionProb is already zero
+				// if the prefix is unseen from log, it might happen in this situation,
+				// the entropy is also -1
+				// finally, the suggestion order is equal to the order of the generation
+				//echo "completion:\n";
+				//print_r($completionProb);
+				//echo "mostfreq:\n";
+				//print_r($mostFreq);
+				//echo "entropy:".$entropy."\n";
 			}
 		}
 		//print_r($completionProb);

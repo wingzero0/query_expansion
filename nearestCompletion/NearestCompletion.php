@@ -11,13 +11,14 @@ class NearestCompletion{
 	public $q1;// safe q
 	public $q2;// safe q
 	public $q1Length;
-	public function __construct($q1, $q2, $vTB)
+	public function __construct($q1, $q2, $vTB, $cTB)
 	{
 		$this->q1 = addslashes($q1);
 		$this->q2 = addslashes($q2);
 		$this->vectorTB = $vTB;
+		$this->clusterTB = $cTB;
 	}
-	public function GetCompletion(){
+	public function GetCompletion($remix = false){
 		// all strings read from db maybe unsafe 
 		$sql = sprintf(
 			"select `ngram`, `value` from `%s` 
@@ -51,7 +52,58 @@ class NearestCompletion{
 		if (!empty($sim)){
 			arsort($sim);
 		}
-		return $sim;
+		
+		if ($remix == false){
+			return $sim;
+		}else{
+			return $this->RemixFreq($sim);
+		}
+	}
+	public function RemixFreq($simArray){
+		$sql = sprintf(
+			"select `Query`, `NumOfQuery` from `%s` 
+			where `query` like '%s%%' 
+			order by `NumOfQuery` desc", $this->clusterTB, $this->q2);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$freqArray = array();
+		while($row = mysql_fetch_row($result)){
+			$q = addslashes($row[0]);
+			$freqArray[$q] = doubleval($row[1]);
+		}
+		
+		if ( !empty($simArray) ){
+			$qs = array_keys($simArray);
+			$maxP = $simArray[$qs[0]];
+			if ($maxP > 0){
+				for ($i= 0;$i< count($qs);$i++){
+					$simArray[$qs[$i]] /= $maxP;
+				}
+			}
+		}
+		if ( !empty($freqArray) ){
+			$qs = array_keys($freqArray);
+			$maxP = $freqArray[$qs[0]];
+			if ($maxP > 0){
+				for ($i= 0;$i< count($qs);$i++){
+					$freqArray[$qs[$i]] = (double) $freqArray[$qs[$i]]  / (double)$maxP;
+				}
+			}
+		}
+		$remixProb = array();
+		$alpha = 0.5;
+		$beta = 1.0 - $alpha;
+		foreach($freqArray as $q => $prob){
+			$remixProb[$q] = $prob * $alpha;
+		}
+		foreach($simArray as $q => $prob){
+			if (!isset($remixProb[$q])){
+				$remixProb[$q] = 0.0;
+			}
+			$remixProb[$q] += $prob * $beta;
+		}
+		arsort($remixProb);
+		return $remixProb;
+		
 	}
 	public function similarity($v1, $v2, $v1Length = -1, $v2Length = -1){
 		if ($v1Length == -1){
