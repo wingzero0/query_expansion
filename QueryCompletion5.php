@@ -187,7 +187,6 @@ class QueryCompletion{
 			"select `Cluster2`,`Prob` from `%s`
 			where `Cluster1` = %d and `Prob` > %lf 
 			order by `Prob` desc
-			limit 0, 1000
 			", 
 			$this->clusterFlowTB, $c1,$this->flowThreshold);
 
@@ -269,24 +268,28 @@ class QueryCompletion{
 		//return $queryPool;
 
 		//rank the completion query
-		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
+		$completionResult = $this->RankCompletionQueryAcrossConcepts($queryPool);
 		//arsort($completionProb);
-		return $completionProb;
+		return $completionResult;
 	}
 	public function RankCompletionQueryAcrossConcepts($queryPool){
 		// rank Completion Query across different concepts
 		$completionProb = array();
+		$concept = array();
 		foreach ($queryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
 				$product = $prob * $this->flowProb[$c2];
 				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
 					$completionProb[$q] = $product;
+					$concept[$q] = $c2;
 					// assign new one
 				}
 			}
 		}
 		arsort($completionProb);
-		return $completionProb;
+		$ret["completionProb"] = $completionProb;
+		$ret["concept"] = $concept;
+		return $ret;
 	}
 	public function GetWordInConcept($clusterNum, $prefix){
 		// return a list of words start the input prefix

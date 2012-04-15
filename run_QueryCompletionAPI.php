@@ -7,6 +7,7 @@ function run_QueryCompletion($q1, $q2, $DBVerNum){
 	$para["q1"] = $q1;
 	$para["q2"] = $q2;
 	$para["qTB"] = "QueryCluster_".$DBVerNum;
+	//$para["qTB"] = "QueryCluster_".$DBVerNum."_Clean";
 	$para["wTB"] = "WordCluster_".$DBVerNum;
 	$para["qTBTight"] = "QueryCluster_".$DBVerNum."_Clean";
 	//$para["qTBTight"] = "QueryCluster_".$DBVerNum;

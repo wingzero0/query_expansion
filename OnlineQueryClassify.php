@@ -44,7 +44,7 @@ class OnlineQueryClassify{
 	}
 	public function OnlineClassify(){
 		// non-complete
-		return NULL;
+		return array(); // empty array
 	}
 	public static function test(){
 		$obj = new OnlineQueryClassify();
