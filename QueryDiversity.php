@@ -6,6 +6,9 @@
 // 3. sim = ngramVector(q*, q^) 
 
 require_once(dirname(__FILE__)."/connection.php");
+define("CONCEPT", 1);
+define("VECTOR", 2);
+
 
 mysql_select_db($database_cnn,$b95119_cnn);
 
@@ -26,6 +29,7 @@ class QueryDiversity{
 		$line = fgets($fp);
 		$flag = false;// flag is a signal about found the next query.
 		$content = array();
+		$order = array(); // numeric array
 		while(1){
 			$line = trim($line);
 			$list = split("\t", $line);
@@ -36,6 +40,7 @@ class QueryDiversity{
 			}
 			$q1 = $list[1];
 			$q2 = $list[2]; // q2 is ground truth
+			$order[] = $q1 . "\t" . $q2; // sync the order, let people can compare with original result
 			$content[$q1][$q2]["results"] = array();
 			$content[$q1][$q2]["value"] = $list[0];
 			$i = 1;
@@ -61,26 +66,37 @@ class QueryDiversity{
 				break;
 			}
 		}
+		$ret["order"] = $order;
+		$ret["content"] = $content;
 		fclose($fp);
-		return $content;
+		return $ret;
 	}
 	
-	public function DivRank($content, $outputFile) {
+	public function DivRank($content, $order ,$outputFile, $type = VECTOR) {
 		$fp = fopen($outputFile, "w");
 		if ($fp == NULL){
 			fprintf(STDERR, "%s opened error\n", $outputFile);
 			return -1;
 		}
-		foreach ($content as $q1 => $array1){
-			foreach ($array1 as $q2 => $attribute){
-				if ( !empty($attribute["results"]) ){
-					$relevantRank = $attribute["score"]; 
+		for ($i = 0;$i< count($order);$i++){
+			$list = preg_split("/\t/", $order[$i]);
+			//print_r($list);
+			//continue;
+			$q1 = $list[0];
+			$q2 = $list[1];
+			$attribute = $content[$q1][$q2];
+			if ( !empty($attribute["results"]) ){
+				$relevantRank = $attribute["score"];
+				$queryConcept = $attribute["concept"];
+				if ($type == VECTOR ){
 					$mergeRank = $this->DivRankWithNgramTree($relevantRank);
-				}else{
-					$mergeRank = array();
+				}else if ($type == CONCEPT){
+					$mergeRank = $this->DivRankWithConcept($queryConcept, $relevantRank);
 				}
-				$this->WriteFile($fp, $q1, $q2, $attribute["value"],$mergeRank);
+			}else{
+				$mergeRank = array();
 			}
+			$this->WriteFile($fp, $q1, $q2, $attribute["value"],$mergeRank);
 		}
 		fclose($fp);
 	}
@@ -97,6 +113,43 @@ class QueryDiversity{
 		}
 		return $nRank;
 	}
+	public function DivRankWithConcept($queryConcept, $relevantRank){
+		$candidateQ = array(); //associative array 
+		$selectedC = array(); //associative array
+		$selectedQ = array(); //normal array
+		$relevantRank = $this->Normalize($relevantRank);
+
+		foreach ($relevantRank as $q => $v){
+			$candidateQ[$q] = true; //init
+		}
+
+		while( !empty($candidateQ) ){
+			$candidateQSim = $this->ConceptReverseSim($queryConcept, $selectedC, $candidateQ); // $update canddidateQSim
+			$ret = $this->SelectMMR($relevantRank, $candidateQSim, 0.5);
+			unset($candidateQ[$ret["q"]]);
+			$selectedQ[] = $ret["q"];
+			//echo $ret["q"]."\n";
+			$c = $queryConcept[$ret["q"]];
+			$selectedC[$c] = true;
+			$score[$ret["q"]] = $ret["score"];
+		}
+		return $selectedQ; 
+	}
+	public function ConceptReverseSim($qConcept ,$selectedC, $candidateQ) {
+		// calculate the query sim, if the concept of query is not selected, the sim = 1.0
+		// else sim = 0.0
+		$candidateQSim = array();
+		foreach($candidateQ as $q => $value){ //$value is useless
+			$c = $qConcept[$q];
+			if ( isset($selectedC[$c])  ){
+				$sim = 0.0;
+			}else{
+				$sim = 1.0;
+			}
+			$candidateQSim[$q] = $sim;
+		}
+		return $candidateQSim;
+	}	
 	public function DivRankWithNgramTree($relevantRank){
 		$candidateQ = array(); //associative array 
 		$selectedQ = array(); //normal array
@@ -123,10 +176,11 @@ class QueryDiversity{
 	public function SelectMMR($relevantRank, $candidateQSim, $alpha){
 		// select q = argmax($relevantRank[$q] * a + $candidiateQSim[$q] * (1-a));
 		$ret["score"] = 0.0;
-		$ret["q"] = NULL; 
+		$ret["q"] = NULL;
+
 		foreach ($candidateQSim as $q => $sim){
 			$tmp = $relevantRank[$q] * $alpha + $sim * (1.0 - $alpha);
-			if ($tmp > $ret["score"]){
+			if ($tmp >= $ret["score"]){
 				$ret["score"] = $tmp;
 				$ret["q"] = $q;
 			}
@@ -166,7 +220,7 @@ class QueryDiversity{
 			$vector[$row[0]] = doubleval($row[1]); // no slash?
 		}
 		if ( empty($vector) ){
-			
+
 		}
 		return $vector;
 	}
@@ -178,7 +232,7 @@ class QueryDiversity{
 			}
 			$v1Length = sqrt($tmpLength);
 		} // eles use the input value
-		
+
 		if ($v2Length == -1){
 			$tmpLength = 0.0;
 			foreach ($v2 as $ngram => $value){
@@ -186,18 +240,18 @@ class QueryDiversity{
 			}
 			$v2Length = sqrt($tmpLength);
 		}
-		
-		if ($v1Length == 0.0 || $v2Length == 0.0){
-			return 0.0;
-		}
-		$sum = 0.0;
-		foreach($v1 as $ngram => $value){
-			if ( isset($v2[$ngram]) ){
-				$sum += $value * $v2[$ngram];
+
+			if ($v1Length == 0.0 || $v2Length == 0.0){
+				return 0.0;
 			}
-		}
+				$sum = 0.0;
+				foreach($v1 as $ngram => $value){
+					if ( isset($v2[$ngram]) ){
+						$sum += $value * $v2[$ngram];
+					}
+				}
 		$sum = $sum / ($v1Length * $v2Length);
-		return $sum;
+			return $sum;
 	}
 	public function WriteFile($fp, $q1, $q2, $value, $mergeRank){
 		fprintf($fp, $value."\t".$q1."\t".$q2."\n");
@@ -209,7 +263,7 @@ class QueryDiversity{
 			fprintf($fp, "\t".$q."\n");
 			$i++;
 		}
-		
+
 	}
 	public static function test(){
 		$filename = "chuhancheng/out.txt";

@@ -8,6 +8,6 @@ $para = ParameterParser($argc, $argv);
 $keys = array("vTb", "o", "i");
 $ret = ParameterChecking($keys, $para);
 $obj = new QueryDiversity($para["vTb"]);
-$content = $obj->LoadFile($para["i"]);
-$obj->DivRank($content, $para["o"]);
+$ret = $obj->LoadFile($para["i"]);
+$obj->DivRank($ret["content"], $ret["order"], $para["o"], VECTOR);
 ?>

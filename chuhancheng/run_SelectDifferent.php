@@ -1,6 +1,6 @@
 <?php
 //sample usage:
-//php run_SelectDifferent.php -f1 completion.txt -f2 baseline.txt -o1 CompletionOnly -o2 baselineOnly
+//php run_SelectDifferent.php -f1 baseline.txt -f2 completion.txt -o1 BaselineOnly -o2 CompletionOnly
 require("/home/b95119/query_expansion/chuhancheng/SelectDifferent.php");
 require("/home/b95119/mylib/kit_lib.php");
 
