@@ -125,7 +125,7 @@ class QueryDiversity{
 
 		while( !empty($candidateQ) ){
 			$candidateQSim = $this->ConceptReverseSim($queryConcept, $selectedC, $candidateQ); // $update canddidateQSim
-			$ret = $this->SelectMMR($relevantRank, $candidateQSim, 0.5);
+			$ret = $this->SelectMMR($relevantRank, $candidateQSim, 0.75);
 			unset($candidateQ[$ret["q"]]);
 			$selectedQ[] = $ret["q"];
 			//echo $ret["q"]."\n";

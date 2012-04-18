@@ -265,18 +265,17 @@ class QueryCompletion{
 				arsort($queryPool[$c2]);
 			}
 		}
-		//return $queryPool;
 
 		//rank the completion query
 		$completionResult = $this->RankCompletionQueryAcrossConcepts($queryPool);
 		//arsort($completionProb);
 		return $completionResult;
 	}
-	public function RankCompletionQueryAcrossConcepts($queryPool){
+	public function RankCompletionQueryAcrossConcepts($conceptQueryPool){
 		// rank Completion Query across different concepts
 		$completionProb = array();
 		$concept = array();
-		foreach ($queryPool as $c2 => $querys){
+		foreach ($conceptQueryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
 				$product = $prob * $this->flowProb[$c2];
 				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
@@ -287,7 +286,7 @@ class QueryCompletion{
 			}
 		}
 		arsort($completionProb);
-		$ret["completionProb"] = $completionProb;
+		$ret["prob"] = $completionProb;
 		$ret["concept"] = $concept;
 		return $ret;
 	}

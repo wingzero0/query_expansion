@@ -43,8 +43,11 @@ while($pair = fgets($fd)){
 	}
 
 	fwrite($fdout,$pair."\n");
-	if (!empty($ret["completionProb"])){
-		foreach($ret["completionProb"] as $key => $value){
+	if (!empty($ret["prob"])){
+		foreach($ret["prob"] as $key => $value){
+			if ($value <= 0.0){
+				break;
+			}
 			fwrite($fdout,"\t".$key."\t".$ret["concept"][$key]."\t".$value."\n");
 		}
 	}

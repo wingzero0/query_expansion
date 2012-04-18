@@ -187,7 +187,6 @@ class QueryCompletion{
 			"select `Cluster2`,`Prob` from `%s`
 			where `Cluster1` = %d and `Prob` > %lf 
 			order by `Prob` desc
-			limit 0, 1000
 			", 
 			$this->clusterFlowTB, $c1,$this->flowThreshold);
 
@@ -253,8 +252,8 @@ class QueryCompletion{
 						if (preg_match($wwwPattern, $newQuery, $matches)){
 							continue;
 						}
+						$prob = $this->QueryGeneratingProb($c2, $newQuery, false); // it can replace by google filter				
 						//$prob = $this->QueryGeneratingProb($c2, $newQuery); // it can replace by google filter				
-						$prob = $this->QueryGeneratingProb($c2, $newQuery,false); // it can replace by google filter				
 						//$num = $this->QueryFilter($newQuery);
 						$queryPool[$c2][$newQuery] = $prob;
 						//$queryPool[$c2][$newQuery] = $num;
@@ -266,34 +265,39 @@ class QueryCompletion{
 				arsort($queryPool[$c2]);
 			}
 		}
-		$completionProb = $this->RankCompletionQueryAcrossConcepts($queryPool);
-		//return $completionProb;
 
 		//rank the completion query
+		$completionResult = $this->RankCompletionQueryAcrossConcepts($queryPool);
+
 		$e = $this->CheckEntropy();
 		//echo $e."\n";
-		$mostFreqQueryPool = $this->GetMostFreqQuery($this->q2);
-		$remixProb = $this->Remix($completionProb, $mostFreqQueryPool,$e);
-		return $remixProb;
+		$mostFreqQueryResult = $this->GetMostFreqQuery($this->q2);
+		$remixResult = $this->Remix($completionResult, $mostFreqQueryResult,$e);
+		return $remixResult;
 	}
 	public function RankCompletionQueryAcrossConcepts($conceptQueryPool){
 		// rank Completion Query across different concepts
 		$completionProb = array();
+		$concept = array();
 		foreach ($conceptQueryPool as $c2 => $querys){
 			foreach ($querys as $q => $prob){
 				$product = $prob * $this->flowProb[$c2];
 				if ( !isset($completionProb[$q]) || $completionProb[$q] < $product){
 					$completionProb[$q] = $product;
+					$concept[$q] = $c2;
 					// assign new one
 				}
 			}
 		}
 		arsort($completionProb);
-		return $completionProb;
+		$ret["completionProb"] = $completionProb;
+		$ret["concept"] = $concept;
+		return $ret;
 	}
-	public function Remix($completionProb, $mostFreq,$entropy){
+	public function Remix($completionResult, $mostFreqResult,$entropy){
 		// normalize
 		// assume the prob was sorted by desc
+		$completionProb = $completionResult["completionProb"];
 		if ( !empty($completionProb) ){
 			$qs = array_keys($completionProb);
 			//print_r($qs);
@@ -307,14 +311,10 @@ class QueryCompletion{
 				// if the prefix is unseen from log, it might happen in this situation,
 				// the entropy is also -1
 				// finally, the suggestion order is equal to the order of the generation
-				//echo "completion:\n";
-				//print_r($completionProb);
-				//echo "mostfreq:\n";
-				//print_r($mostFreq);
-				//echo "entropy:".$entropy."\n";
 			}
 		}
 		//print_r($completionProb);
+		$mostFreq = $mostFreqResult["freq"];
 		if ( !empty($mostFreq) ){
 			$qs = array_keys($mostFreq);
 			$maxP = $mostFreq[$qs[0]];
@@ -326,6 +326,7 @@ class QueryCompletion{
 
 		// remix
 		$remixProb = array();
+		$concept = array();
 		$maxEntropy = 5.0;
 		$minEntropy = 0.0;
 		if ($entropy > $maxEntropy || $entropy == -1.0){
@@ -339,15 +340,20 @@ class QueryCompletion{
 		//echo "beta:".$beta."\n";
 		foreach($completionProb as $q => $prob){
 			$remixProb[$q] = $prob * $alpha;
+			$concept[$q] = $completionResult["concept"][$q];
 		}
 		foreach($mostFreq as $q => $prob){
 			if (!isset($remixProb[$q])){
 				$remixProb[$q] = 0.0;
 			}
 			$remixProb[$q] += $prob * $beta;
+			$concept[$q] = $mostFreqResult["concept"][$q];
 		}
 		arsort($remixProb);
-		return $remixProb;
+		
+		$ret["prob"] = $remixProb;
+		$ret["concept"] = $concept; 
+		return $ret;
 	}
 	public function GetWordInConcept($clusterNum, $prefix){
 		// return a list of words start the input prefix
@@ -552,7 +558,7 @@ class QueryCompletion{
 	}
 	public function GetMostFreqQuery($q, $limit = -1){
 		$sql = sprintf(
-			"select `Query`, `NumOfQuery` from `%s`
+			"select `Query`, `NumOfQuery`, `ClusterNum` from `%s`
 			where `Query` like '%s%%' 
 			order by `NumOfQuery` desc
 			", 
@@ -562,12 +568,16 @@ class QueryCompletion{
 		}
 		$result = mysql_query($sql) or die($sql."\n".mysql_error());
 
-		$completion = array(); 
+		$freq = array();
+		$concept = array();
 		while($row = mysql_fetch_row($result)){
 			$query = addslashes($row[0]);
-			$completion[$query] = intval($row[1]);
+			$freq[$query] = intval($row[1]);
+			$concept[$query] = intval($row[2]);
 		}
-		return $completion;
+		$ret["freq"] = $freq;
+		$ret["concept"] = $concept;
+		return $ret;
 	}
 	private function InitTValue(){
 		$sql = sprintf(

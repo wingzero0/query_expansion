@@ -10,6 +10,6 @@ for t in 0 1 2 3
 do
 	for ((c=1;c<20;c=c+1))
 	do
-		php ../run_QueryDiversity.php -vTb NgramVector -i "$inputPath"/"$t"_"$c"/"$method"_all.txt -o "$outputPath"/"$t"_"$c"/"$method"Diversity_all.txt & 
+		php ../run_QueryDiversity.php -vTb NgramVector -i "$inputPath"/ttest_"$t"_"$c"/"$method"_2.5up.txt -o "$outputPath"/ttest_"$t"_"$c"/"$method"Diversity_2.5up.txt & 
 	done
 done
