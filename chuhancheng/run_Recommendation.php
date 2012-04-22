@@ -40,7 +40,8 @@ while($pair = fgets($fd)){
 	if ($para["method"] == "completion"){
 		//echo $pair."\n";
 		//echo $f_query."\t".$test_next."\n";
-		$ret = run_QueryCompletion($f_query, $test_next, 5);
+		$retArray = run_QueryCompletion($f_query, $test_next, 5);
+		$ret = $retArray["prob"];
 	}else if ($para["method"] == "baseline"){
 		$ret = run_Baseline($f_query, $test_next, 5);
 	}else if ($para["method"] == "flowandfreq"){

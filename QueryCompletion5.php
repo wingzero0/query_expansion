@@ -216,7 +216,8 @@ class QueryCompletion{
 		$uniqueC2 = array();
 		if (empty($conceptPool)){
 			//fprintf(STDERR,"conceptPool is empty\n");
-			$emptyArray = array();
+			$emptyArray["prob"] = array();
+			$emptyArray["concept"] = array();
 			return $emptyArray;//return the empty array()
 			//return -1;
 		}

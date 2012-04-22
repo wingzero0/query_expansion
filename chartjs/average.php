@@ -1,4 +1,25 @@
 <?php
+function LoadValidNumber($filename){
+	$fp = fopen($filename, "r");
+	if ($fp == null){
+		echo $filename." can't be open<br>";
+		return array();
+	}
+	$rates = array();
+	while ($line = fgets($fp)){
+		$list = preg_split("/\t/", $line);
+		if ( count($list) != 3) {
+			echo "formate error:".$line."\n";
+			continue;
+		}
+		$index = $list[1];
+		$value = intval($list[2]);
+		$num[ $index ] = $value;
+	}
+	//print_r($num);
+	fclose($fp);
+	return $num;
+}
 
 function GetFileRecords($filename){
 	$fp = fopen($filename, "r");
@@ -31,10 +52,54 @@ function GetRecords($dirname){
 	return $rates;
 }
 
-$rates = GetRecords($_GET["dirname"]);
+$nums = LoadValidNumber($_GET["dirnamePrefix"]."DataStatictics.txt");
+
 $methodsTitle = array("completion" => "Completion", "baseline" => "Baseline", 
 	"pairandfreq" => "QueryPair", "flowandfreq" => "ConceptPair", 
-	"nearest" => "Nearest", "completionDiversity" => "Completion + Diversity", "completionNoEntropy" => "completion without merge");
+	"nearest" => "Nearest", "completionDiversity" => "Completion + Diversity",
+	"completionNoEntropy" => "completion without entropy");
+	
+$totalSum = 0;
+for($t = 0;$t < 4;$t++){
+	$sumT[$t] = 0;
+	for ($i = 1;$i<=10;$i++){
+		foreach ($methodsTitle as $method => $title){
+			$avg[$t][$method][$i] = 0.0;
+			$allAvg[$method][$i] = 0.0; //duplicate init
+		}
+	}
+	for ($c = 1;$c < 20;$c++){
+		$index = $t."_".$c;
+		$sumT[$t] += $nums[$index];
+		$totalSum += $nums[$index];
+	}
+}
+
+//echo $totalSum."<br>";
+for($t = 0;$t < 4;$t++){
+	for ($c = 1;$c < 20;$c++){
+		$index = $t."_".$c;		
+		$dirname = $_GET["dirnamePrefix"].$index;
+		$rates = GetRecords($dirname);
+		foreach ($methodsTitle as $method => $title){
+			for($i = 1; $i <=10; $i++){
+				$avg[$t][$method][$i] += $nums[$index] * $rates[$method][$i];
+				$allAvg[$method][$i] += $nums[$index] * $rates[$method][$i];
+			}
+		}
+	}
+}
+
+foreach ($methodsTitle as $method => $title){
+	for($i = 1; $i <=10; $i++){
+		for ($t = 0;$t < 4;$t++){
+			$avg[$t][$method][$i] /= ( double )$sumT[$t];
+		}
+		$allAvg[$method][$i] /= (double)$totalSum;
+	}
+}
+//print_r($avg);
+//print_r($allAvg);
 ?>
 
 <!DOCTYPE HTML>
@@ -70,11 +135,11 @@ $methodsTitle = array("completion" => "Completion", "baseline" => "Baseline",
 						marginBottom: 30
 					},
 					title: {
-						text: ' InclustionRate ',
+						text: ' Average Inclusion Rate ',
 						x: -20 //center
 					},
 					subtitle: {
-						text: ' <?php echo $_GET["dirname"] ?>',
+						text: ' <?php echo $_GET["dirnamePrefix"] ?>',
 						x: -20
 					},
 					xAxis: {
@@ -93,7 +158,7 @@ $methodsTitle = array("completion" => "Completion", "baseline" => "Baseline",
 					yAxis: {
 						min: 0,
 						title: {
-							text: 'Inclusion Rate'
+							text: 'Average Inclusion Rate'
 						},
 						plotLines: [{
 							value: 0,
@@ -112,26 +177,58 @@ $methodsTitle = array("completion" => "Completion", "baseline" => "Baseline",
 						align: 'right',
 						verticalAlign: 'top',
 						x: -10,
-						y: 100,
+						y: 50,
 						borderWidth: 0
 					},
 					series: [
 						<?php
-							foreach ($rates as $method => $row){
+							if ($_GET["display"] == "all"){
+								for ($t = 0;$t < 4;$t++){
+									foreach( $methodsTitle as $method => $title ){
 						?>
 						{
-						name: '<?php echo $methodsTitle[$method] ?>',
+						name: '<?php echo $methodsTitle[$method]." t=".$t ?>',
 						data: [
-							<?php 
-								for ($i = 1;$i<= 10;$i++){
-									echo $row[$i].",";
-								}
-								//echo $row[10];
-							?>]
+									<?php 
+										for ($i = 1;$i<= 10;$i++){
+											echo $avg[$t][$method][$i].",";
+										}
+									?>]
 						},
 						<?php
+									}
+								}
+							}else if ( isset($_GET["display"]) && is_numeric($_GET["display"])){
+								$t = $_GET["display"];
+								foreach( $methodsTitle as $method => $title ){
+						?>
+						{
+						name: '<?php echo $methodsTitle[$method]." t=".$t ?>',
+						data: [
+								<?php 
+									for ($i = 1;$i<= 10;$i++){
+										echo $avg[$t][$method][$i].",";
+									}
+								?>]
+						},
+						<?php
+								}
+							}else{
+								foreach( $methodsTitle as $method => $title ){
+						?>
+						{
+						name: '<?php echo $methodsTitle[$method]." all" ?>',
+						data: [
+								<?php 
+									for ($i = 1;$i<= 10;$i++){
+										echo $allAvg[$method][$i].",";
+									}
+								?>]
+						},
+						<?php
+								}
 							}
-						?>					
+						?>							
 					]
 				});
 				
