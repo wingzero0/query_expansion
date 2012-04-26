@@ -41,8 +41,12 @@ function GetFileRecords($filename){
 }
 
 function GetRecords($dirname){
-	$methods = array("completion", "baseline", "pairandfreq", 
-		"flowandfreq", "nearest", "completionDiversity", "completionNoEntropy");
+	$methods = array(
+		"completionPure", 
+		"baseline", 
+		"pairandfreq", 
+		"flowandfreq", 
+		"nearestPure", "completionEntropy", "nearestHybrid");
 	
 	$rates = array();
 	foreach ($methods as $i => $name){
@@ -54,10 +58,14 @@ function GetRecords($dirname){
 
 $nums = LoadValidNumber($_GET["dirnamePrefix"]."DataStatictics.txt");
 
-$methodsTitle = array("completion" => "Completion", "baseline" => "Baseline", 
-	"pairandfreq" => "QueryPair", "flowandfreq" => "ConceptPair", 
-	"nearest" => "Nearest", "completionDiversity" => "Completion + Diversity",
-	"completionNoEntropy" => "completion without entropy");
+$methodsTitle = array("completionPure" => "ConceptCompletion", 
+	"baseline" => "Baseline", 
+	"pairandfreq" => "QueryPair", 
+	"flowandfreq" => "ConceptPair", 
+	"nearestPure" => "Nearest",
+	"completionEntropy" => "ConceptCompletion + entropy",
+	"nearestHybrid" => "NearestHybrid"
+);
 	
 $totalSum = 0;
 for($t = 0;$t < 4;$t++){
@@ -131,8 +139,9 @@ foreach ($methodsTitle as $method => $title){
 					chart: {
 						renderTo: 'container',
 						defaultSeriesType: 'line',
-						marginRight: 130,
-						marginBottom: 30
+						width: 1000,
+						marginRight: 300,
+						marginBottom: 50
 					},
 					title: {
 						text: ' Average Inclusion Rate ',
@@ -176,8 +185,9 @@ foreach ($methodsTitle as $method => $title){
 						layout: 'vertical',
 						align: 'right',
 						verticalAlign: 'top',
-						x: -10,
-						y: 50,
+						itemWidth: 300,
+						//x: 50,
+						y: 100,
 						borderWidth: 0
 					},
 					series: [

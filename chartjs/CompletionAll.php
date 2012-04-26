@@ -68,8 +68,9 @@ $rank = GetRecords($_GET["method"], $_GET["dirnamePrefix"]);
 					chart: {
 						renderTo: 'container',
 						defaultSeriesType: 'line',
-						marginRight: 130,
-						marginBottom: 30
+						width:1000,
+						marginRight: 300,
+						marginBottom: 50
 					},
 					title: {
 						text: ' InclustionRate ',
@@ -88,9 +89,14 @@ $rank = GetRecords($_GET["method"], $_GET["dirnamePrefix"]);
 								}
 							}
 						?>],
+						labels: {
+							align: 'left',
+							rotation: 90,
+							step: 2
+						},
 						title: {
 							enable: true,
-							text: 'Input',
+							text: 't_c',
 						},
 					},
 					yAxis: {
@@ -114,7 +120,8 @@ $rank = GetRecords($_GET["method"], $_GET["dirnamePrefix"]);
 						layout: 'vertical',
 						align: 'right',
 						verticalAlign: 'top',
-						x: -10,
+						//x: -10,
+						itemWidth: 300,
 						y: 100,
 						borderWidth: 0
 					},
@@ -123,7 +130,7 @@ $rank = GetRecords($_GET["method"], $_GET["dirnamePrefix"]);
 							foreach ($rank as $i => $row){
 						?>
 						{
-						name: '<?php echo "rank ".$i; ?>',
+						name: '<?php echo "top ".$i." inclusion rate"; ?>',
 						data: [
 							<?php 
 								for ($t = 0; $t <=3; $t++){

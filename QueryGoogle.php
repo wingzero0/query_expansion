@@ -31,6 +31,49 @@ class QueryGoogle{
 		$num =  intval( str_replace(",", "", $ret[2]->innertext()) );
 		return $num;
 	}
+	public function Snippy($html = null){
+		if ($html == null){
+			$html = $this->QueryGooglePage();
+		}
+		$q = $this->FindQuery($html);
+		$center_col = $html->find("div[id=center_col]"); // find the main block
+		if ($center_col == null){
+			fprintf(STDERR,"can't get center_col for query:%s\n", $q);
+			return null;
+		}
+		$ret["query"] = $q;
+		//$ret["snippy"] = $center_col[0]->find('text');
+		//$ret["snippy"] = $center_col[0]->plaintext;
+		$ret["snippy"] = $this->OuterTextToSpaceText($center_col[0]);
+		return $ret;
+	}
+	protected function OuterTextToSpaceText($simpleE){
+		$pattern = "/<(.*?)>/";
+		$text = preg_replace($pattern, " ", $simpleE->innertext);
+		//echo $multiLine;
+		
+		//$newlines = "/(\n{2,})|(\s\n)/";
+		//$multiLine = preg_replace($newlines, "\n", $multiLine);
+		$newlines = "/(\s{2,})/";
+		$spaceText = preg_replace($newlines, " ", $text);
+		return $spaceText;
+	}
+	public function SnippyVector($inputS){
+		$s = strtolower($inputS);
+		//$s = $inputS;
+		$pattern = "/\s|\.|,|\+|-|;|:|_|\?|\\\\|&|\[|\]|\(|\)|\/|\||\$|=|#/";
+		$list = preg_split($pattern, $s);
+		foreach ($list as $w){
+			if (!empty($w)){
+				if (!isset($dict[$w])){
+					$dict[$w] = 0;
+				}
+				$dict[$w] += 1;
+			}
+		}
+		ksort($dict);
+		return $dict;
+	}
 	public function Recommendation($html = null){
 		if ($html == null){
 			$html = $this->QueryGooglePage();
@@ -118,11 +161,14 @@ class QueryGoogle{
 	}
 	public static function test() {
 		$obj = new QueryGoogle("");
-		$html = file_get_html("./nearestCompletion/661788.html");
+		$html = file_get_html("./nearestCompletion/69999.html");
 		//$numOfResult = $obj->NumOfResults();
 		//echo $numOfResult."\n";
-		$s = $obj->Recommendation($html);
-		print_r($s);
+		$s = $obj->Snippy($html);
+		$dict = $obj->SnippyVector($s["snippy"]);
+		print_r($dict);
+		//echo $s["snippy"];
+		
 	}
 }
 

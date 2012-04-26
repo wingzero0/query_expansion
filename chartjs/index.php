@@ -20,8 +20,9 @@ function GetFileRecords($filename){
 }
 
 function GetRecords($dirname){
-	$methods = array("completion", "baseline", "pairandfreq", 
-		"flowandfreq", "nearest", "completionDiversity", "completionNoEntropy");
+	$methods = array("completionPure", "baseline", "pairandfreq", 
+		"flowandfreq", "nearestPure", "completionEntropy", 
+		"nearestHybrid");
 	
 	$rates = array();
 	foreach ($methods as $i => $name){
@@ -32,9 +33,14 @@ function GetRecords($dirname){
 }
 
 $rates = GetRecords($_GET["dirname"]);
-$methodsTitle = array("completion" => "Completion", "baseline" => "Baseline", 
-	"pairandfreq" => "QueryPair", "flowandfreq" => "ConceptPair", 
-	"nearest" => "Nearest", "completionDiversity" => "Completion + Diversity", "completionNoEntropy" => "completion without merge");
+$methodsTitle = array("completionPure" => "ConceptCompletion", 
+	"baseline" => "Baseline", 
+	"pairandfreq" => "QueryPair", 
+	"flowandfreq" => "ConceptPair", 
+	"nearestPure" => "Nearest", 
+	"completionEntropy" => "ConceptCompletion + Entropy",
+	"nearestHybrid" => "NearestHybrid"
+);
 ?>
 
 <!DOCTYPE HTML>
@@ -66,8 +72,9 @@ $methodsTitle = array("completion" => "Completion", "baseline" => "Baseline",
 					chart: {
 						renderTo: 'container',
 						defaultSeriesType: 'line',
-						marginRight: 130,
-						marginBottom: 30
+						width: 1000,
+						marginRight: 300,
+						marginBottom: 50
 					},
 					title: {
 						text: ' InclustionRate ',
@@ -111,7 +118,8 @@ $methodsTitle = array("completion" => "Completion", "baseline" => "Baseline",
 						layout: 'vertical',
 						align: 'right',
 						verticalAlign: 'top',
-						x: -10,
+						//x: -10,
+						itemWidth: 300,
 						y: 100,
 						borderWidth: 0
 					},
