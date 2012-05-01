@@ -29,6 +29,12 @@ function run_Nearest($q1, $q2, $DBVerNum){
 	$nearest = $obj->GetCompletion(true);
 	return $nearest;
 }
+function run_SnippyNearest($q1, $q2, $DBVerNum){
+	$para["qTB"] = "QueryCluster_".$DBVerNum."_Clean";
+	$obj = new NearestCompletion($q1, $q2, "SnippyVector", $para["qTB"]);
+	$nearest = $obj->GetCompletion(false);
+	return $nearest;
+}
 //$ret = run_Baseline("apple", "a");
 //var_dump($ret);
 ?>

@@ -53,6 +53,8 @@ while($pair = fgets($fd)){
 		$ret = run_PairFreq($f_query, $test_next, 5);
 	}else if ($para["method"] == "nearest"){
 		$ret = run_Nearest($f_query, $test_next, 5);
+	}else if ($para["method"] == "snippy"){
+		$ret = run_SnippyNearest($f_query, $test_next, 5);
 	}
 
 	fwrite($fdout,$pair."\n");
@@ -69,4 +71,5 @@ while($pair = fgets($fd)){
 }
 fclose($fdout);
 fclose($fd);
+printf("-t %d -c %d -method %s -o %s finish\n",$term_number, $characters, $para["method"] ,$para["o"]);
 ?>

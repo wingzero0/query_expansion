@@ -61,7 +61,7 @@ class QueryGoogle{
 	public function SnippyVector($inputS){
 		$s = strtolower($inputS);
 		//$s = $inputS;
-		$pattern = "/\s|\.|,|\+|-|;|:|_|\?|\\\\|&|\[|\]|\(|\)|\/|\||\$|=|#/";
+		$pattern = "/'|\"|\s|\.|,|\\+|-|;|:|_|\?|\\\\|\\&|\[|\]|\(|\)|\/|\||\\$|=|#|!|\\*|%/";
 		$list = preg_split($pattern, $s);
 		foreach ($list as $w){
 			if (!empty($w)){

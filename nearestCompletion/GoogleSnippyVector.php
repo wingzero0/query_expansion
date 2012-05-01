@@ -15,20 +15,32 @@ class GoogleSnippyVector{
 	public function __construct(){
 		$this->qGoogle = new QueryGoogle("");
 	}
-	public function SaveDb($q, $ngrams){
-		$safeQ = addslashes($q);
-		foreach ($ngrams as $ngram => $v){
-			$safeNgram = addslashes($ngram);
-			$sql = sprintf(
-				"insert into `SnippyTf` (`query`, `ngram`, `value`) values ('%s', '%s', '%lf')",
-				$safeQ, $safeNgram, $v
-			);
-			$result = mysql_query($sql) or die($sql."\n".mysql_error());
+	public function PathFileHtmlToSnippy($dir){
+		if (is_dir($dir)) {
+			if ($dh = opendir($dir)) {
+				while (($filename = readdir($dh)) !== false) {
+					$filePath = $dir. "/". $filename;
+					if ( filetype($filePath) == "file"){
+						$snippy = $this->HtmlFileToSnippyTerm($filePath);
+						if ($snippy != null){
+							$this->SaveTfToDb($snippy["query"], $snippy["snippyTerm"]);// they are unique gram
+						}
+					}
+				}
+				closedir($dh);
+			}else{
+				fprintf(STDERR, "%s can't not open\n", $dir);
+			}
+		}else{
+			fprintf(STDERR, "%s is not dir\n", $dir);
 		}
 	}
 	public function HtmlFileToSnippyTerm($file){
 		$html = file_get_html($file);
 		$s = $this->qGoogle->Snippy($html);
+		if ($s == null){
+			return null;
+		}
 		$dict = $this->qGoogle->SnippyVector($s["snippy"]);
 		$normalize = $this->TfNormalize($dict);
 		$ret["query"] = $s["query"];
@@ -48,31 +60,79 @@ class GoogleSnippyVector{
 		}
 		return $normalize;
 	}
-	public function PathFileHtmlToSnippy($dir){
-		if (is_dir($dir)) {
-			if ($dh = opendir($dir)) {
-				while (($filename = readdir($dh)) !== false) {
-					$filePath = $dir. "/". $filename;
-					if ( filetype($filePath) == "file"){
-						$snippy = $this->HtmlFileToSnippyTerm($filePath);
-						$this->SaveDb($snippy["query"], $snippy["snippyTerm"]);// they are unique gram
-					}
+	public function SaveTfToDb($q, $ngrams){
+		$safeQ = addslashes($q);
+		foreach ($ngrams as $ngram => $v){
+			$safeNgram = addslashes($ngram);
+			$sql = sprintf(
+				"insert into `SnippyTf` (`query`, `ngram`, `value`) values ('%s', '%s', '%lf')",
+				$safeQ, $safeNgram, $v
+			);
+			$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		}
+	}
+	public function GetTfFromDb($db){
+		$sql = sprintf(
+			"select `query`, `ngram`, `value` from `%s`", $db
+		);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$tf = array();
+		while ( $row = mysql_fetch_row($result) ){
+			$tf[$row[0]][$row[1]] = doubleval($row[2]);
+		}
+		return $tf;
+	}
+	public function IdfFromDB($db){
+		$sql = sprintf(
+			"select `query`, count(`query`) from `%s` group by `query`", $db
+		);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		$totalQueryNum = mysql_num_rows($result);
+		
+		$sql = sprintf(
+			"select `ngram`, count(`ngram`) from `%s` group by `ngram`", $db
+		);
+		$result = mysql_query($sql) or die($sql."\n".mysql_error());
+		
+		$idf = array();
+		while ( $row = mysql_fetch_row($result) ){
+			$idf[$row[0]] = log((double) $totalQueryNum / (double) $row[1]); 
+		}
+		ksort($idf);
+		return $idf;
+	}
+	public function SaveTfIdfVector($tf, $idf) {
+		foreach($tf as $q => $ngrams){
+			$safeQ = addslashes($q);
+			foreach($ngrams as $ngram => $value){
+				$safeNgram = addslashes($ngram);
+				if ( isset($idf[$ngram]) ){
+					$weight = $value * $idf[$ngram];
+					$sql = sprintf(
+						"insert into `SnippyVector` (`query`, `ngram`, `value`) values ('%s', '%s', '%lf')",
+						$safeQ, $safeNgram, $weight
+					);
+					$result = mysql_query($sql) or die($sql."\n".mysql_error());
+				}else{
+					fprintf(STDERR, "ngram:%s not in idf\n", $ngram);
 				}
-				closedir($dh);
-			}else{
-				fprintf(STDERR, "%s can't not open\n", $dir);
 			}
-		}else{
-			fprintf(STDERR, "%s is not dir\n", $dir);
 		}
 	}
 	public static function test(){
 		$obj = new GoogleSnippyVector();
-		$obj->PathFileHtmlToSnippy("./googleHtml_1001up/");
+		//$obj->PathFileHtmlToSnippy("./googleHtml_1001up/");
+		$db = "SnippyTf";
+		fprintf(STDERR, "select tf\n");
+		$tf = $obj->GetTfFromDb($db);
+		fprintf(STDERR, "select idf\n");
+		$idf = $obj->IdfFromDB($db);
+		fprintf(STDERR, "inserting vector\n");
+		$obj->SaveTfIdfVector($tf, $idf); 
 		//$obj->qGoogle->SetQuery("mapquest com");
 		//$obj->qGoogle->DumpHtml();
 	}
 }
-//GoogleSnippyVector::test();
+GoogleSnippyVector::test();
 
 ?>
