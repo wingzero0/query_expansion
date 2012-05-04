@@ -6,7 +6,6 @@ class RandomSample{
 	public function __construct(){
 		srand(1);
 	}
-	/*
 	public function RandomSwap($data, $size, $randomSwapCount = 10){
 		for ($i = 0;$i < $randomSwapCount; $i++){
 			$index1 = rand(0, $size -1);
@@ -33,20 +32,22 @@ class RandomSample{
 			echo $filename." can't be open<br>";
 			return array();
 		}
+		$data = array();
 		while ($line = fgets($fp)){
-			$list = preg_split("/\t/", $line);
-			if ( count($list) != 3) {
-				echo "formate error:".$line."\n";
-				continue;
-			}
-			$index = $list[1];
-			$value = intval($list[2]);
-			$num[ $index ] = $value;
+			$data[] = $line;
 		}
-		//print_r($num);
+		
 		fclose($fp);
-		return $num;
+		return $data;
 	}
+	public function SelectTargetData($data, $index){
+		//sort($index);
+		foreach($index as $i=>$v){
+			$ret[$i] = $data[$v];
+		}
+		return $ret;
+	}
+	/*
 	public function RandomSelect(){
 		for ($i = 0;$i < 100;$i++){
 			$x = rand(0, 3);
@@ -60,17 +61,25 @@ class RandomSample{
 		ksort($select);
 		return $select;
 	}
+	 */
 	public static function test(){
 		$obj = new RandomSample();
-		$ret = $obj->RandomSelect();
-		for ($i = 0;$i < 100;$i++){
-			$data[$i] = $i;
-		}
-		$data = $obj->GetNRandomResults(3990, 8);
+		//$ret = $obj->RandomSelect();
+		//for ($i = 0;$i < 100;$i++){
+		//	$data[$i] = $i;
+		//}
+		$record = $obj->ReadStatisticsData("chuhancheng/Aol_pair_nqq2/Aol_pair_nqq_all.txt");
+		$index = $obj->GetNRandomResults(10601, 200);
+		$data = $obj->SelectTargetData($record, $index);
+		print_r($index);
 		print_r($data);
-		//print_r($ret);
+		$fp = fopen("userStudy.txt", "w");
+		foreach($data as $i => $v){
+			fprintf($fp, "%s", $v);
+		}
+		fclose($fp);
+		//print_r($record);
 	}
-	 */
 }
 
 RandomSample::test();
