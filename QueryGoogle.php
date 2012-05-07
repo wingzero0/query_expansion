@@ -31,6 +31,18 @@ class QueryGoogle{
 		$num =  intval( str_replace(",", "", $ret[2]->innertext()) );
 		return $num;
 	}
+	public function GetCenterCol($html = null){
+		if ($html == null){
+			$html = $this->QueryGooglePage();
+		}
+		$q = $this->FindQuery($html);
+		$center_col = $html->find("div[id=center_col]"); // find the main block
+		if ($center_col != null){
+			return $center_col[0]->outertext;
+		}else{
+			return null;
+		}
+	}
 	public function Snippy($html = null){
 		if ($html == null){
 			$html = $this->QueryGooglePage();

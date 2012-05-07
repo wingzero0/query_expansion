@@ -1,0 +1,22 @@
+#snippy
+{
+color:grey;
+}
+.h{
+	font-size: 150%
+}
+#pq
+{
+	font-weight: bold;
+	font-style: italic;
+	color:grey;
+}
+a{
+	color:grey;
+}
+#user{
+	padding:0;
+	margin:0;
+	text-align:center;
+	margin:0 auto;
+}
