@@ -42,6 +42,9 @@ echo "<span class=\"h\">We search \"" . $q1. "\" from Google:</span><br><div id=
 <?php
 foreach($partialQ2 as $i => $pq):
 	$formID = "form".$i;
+	if ( empty($pq) ):
+		continue;
+	endif;
 ?>
 	<div id="<?php echo $formID; ?>" style="display:block">
 <?php
@@ -59,26 +62,29 @@ foreach($partialQ2 as $i => $pq):
 				<tr>
 				<td><label for="resonable" id="resonable_label">How many records are reasonable</label>  </td>
 				<td><input type="text" name="resonable" id="resonable" size="2" value="0" class="text-input" /> </td>  
+				<td><button type="button" name="add" onclick="addOne(this.form, 'resonable')">+1</button></td>
 				</tr> 
 				<tr>
 				<td><label for="diversity" id="diversity_label">How many different intents in the result</label> </td>  
 				<td><input type="text" name="diversity" id="diversity" size="2" value="0" class="text-input" /> </td>
+				<td><button type="button" name="add" onclick="addOne(this.form, 'diversity')">+1</button></td>
 				</tr>  
 				<tr>
 				<td><label for="duplicate" id="duplicate_label">How many duplicate results</label>  </td>
-				<td><input type="text" name="duplicate" id="duplicate" size="2" value="0" class="text-input" /></td>  
+				<td><input type="text" name="duplicate" id="duplicate" size="2" value="0" class="text-input" /></td>
+				<td><button type="button" name="add" onclick="addOne(this.form, 'duplicate')">+1</button></td>  
 				</tr>
 			</table>
 			  
-				<input type="hidden" name="fromID" value="<?php echo $formID; ?>"/>
+				<!-- <input type="hidden" name="fromID" value="<?php echo $formID; ?>"/> -->
 				<input type="hidden" name="t" value="<?php echo $settingT[$i]; ?>"/>
 				<input type="hidden" name="c" value="<?php echo $settingC[$i]; ?>"/>
 				<input type="hidden" name="qPairID" value="<?php echo $_GET["qPairID"]; ?>"/>
 				<input type="hidden" name="numberOfRecord" value="<?php echo count($completion[$i]); ?>"/>
 				<input type="hidden" name="user" value="<?php echo $_GET['user']; ?>"/>
 				<input type="hidden" name="methodName" value="<?php echo $_GET['methodName']; ?>"/>
-				<button type="button" name="rateIt" onclick="rate(this.form);">Rate</button>
-				<button type="button" name="skipIt" onclick="skip(this.form);">Skip</button>  
+				<button type="button" name="rateIt" onclick="rate(this.form, '<?php echo $formID; ?>');">Rate</button>
+				<button type="button" name="skipIt" onclick="skip(this.form, '<?php echo $formID; ?>');">Skip</button>  
 			</fieldset>  
 		</form>  
 	</div>
