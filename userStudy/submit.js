@@ -1,14 +1,25 @@
 function rate(form, formId){
-	var element = document.getElementById(formId);
+	var element = document.getElementById(formId); // the whole div block
 	//console.log(element);
 	
 	var postValue = {};
 	var i;
-	for (i = 1;i<=14;i++){
-		console.log(form.elements[i].name);
-		postValue[form.elements[i].name] = form.elements[i].value; 
-	} 
-	//console.log(postValue);
+	postValue["nonRelevant"] = 0;
+	postValue["neutral"] = 0;
+	postValue["Relevant"] = 0;
+	for (i = 0;i<form.elements.length;i++){
+		//console.log(form.elements[i].name);
+		if (form.elements[i].type == "radio"){
+			if ( form.elements[i].checked ){
+				postValue[form.elements[i].name] = form.elements[i].value;
+				postValue[form.elements[i].value] += 1; 
+			}
+		}else{
+			postValue[form.elements[i].name] = form.elements[i].value; 
+		}
+	}
+	//document.getElementsByName('group');
+	console.log(postValue);
 	
 	$.ajax({  
 		type: "POST",
@@ -24,7 +35,6 @@ function rate(form, formId){
 			}
 		}  
 	});
-	  
 }
 
 function skip(form,formId){

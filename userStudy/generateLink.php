@@ -1,9 +1,12 @@
 <?php
 require_once("/home/b95119/query_expansion/UserStudy.php");
+require_once("/home/b95119/query_expansion/connection.php");
+mysql_select_db($database_cnn,$b95119_cnn);
+
 $systemPath = "/home/b95119/query_expansion/";
 
-$file = "userStudy.txt";
-$fp = fopen("userStudy.txt", "r");
+$file = "userStudy2.txt";
+$fp = fopen($file, "r");
 if ($fp == null){
 	printf("%s can not open\n", $file);
 	die();
@@ -24,6 +27,20 @@ if ($fp == null){
 	}
 	fclose($fp);
 }
+
+$sql = sprintf(
+	"SELECT  `R`.`qPairID` ,  `M`.`methodName` 
+	FROM  `UserStudyRecord` AS  `R` 
+	LEFT JOIN  `UserStudyMethod` AS  `M` ON  `R`.`methodID` =  `M`.`id` 
+	AND  `R`.`user` =  '%s'
+	GROUP BY  `R`.`qPairID` ,  `M`.`methodName`",
+	$_GET["user"]);
+
+$result = mysql_query($sql) or dir($sql."\n".mysql_error());
+
+while($row = mysql_fetch_row($result) ){
+	$rated[$row[0]][$row[1]] = true;
+}
 ?>
 
 <html>
@@ -38,7 +55,12 @@ if ($fp == null){
 				echo '<div align="center" style="float:left;width:150px;border:1px solid">';
 				echo $method[$j]."<br/>";
 				foreach($link[$j] as $i => $v){
-					printf("<a href=\"%s\">%d</a><br/>", $v, $i);
+					if ( isset($rated[$i][$method[$j]]) ){
+						$str = $i."(rated)";
+					}else{
+						$str = $i;
+					}
+					printf("<a href=\"%s\">%s</a><br/>", $v, $str);
 				}
 				echo '</div>';
 			}

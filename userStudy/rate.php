@@ -39,6 +39,7 @@ echo "<span class=\"h\">We search \"" . $q1. "\" from Google:</span><br><div id=
 		&nbsp;
 		</div>
 	<div id="q2" style="float:left;width:400px">
+	<span class="h">q2=<?php echo $q2; ?></span>
 <?php
 foreach($partialQ2 as $i => $pq):
 	$formID = "form".$i;
@@ -47,25 +48,32 @@ foreach($partialQ2 as $i => $pq):
 	endif;
 ?>
 	<div id="<?php echo $formID; ?>" style="display:block">
-<?php
-	echo "<span class=\"h\">q2=<span id=\"pq\">".$pq."</span><br>";
-	echo "The suggestion of q2:<br></span>";
-	echo "<p>";
-	foreach($completion[$i] as $j => $result){
-		echo "<span style='color:grey'>". ($j + 1) ." &nbsp </span>".$result."<br>";
-	}
-	echo "</p>";
-?>
-		<form name="contact" action="">  
+
+	<span class="h">When entering "<span id="pq"><?php echo $pq; ?></span>"<br>
+	The suggestion of q2:<br></span>
+	<table>
+	</table>
+
+		<form name="rateValue" id="rateValue<?php echo $formID; ?>" action="">  
 			<fieldset>  
 			<table><th></th>
-				<tr>
+				<tr><td></td><td>Non Relevant</td><td>Neutral</td><td>Relevant</td></tr>
+<?php
+	foreach($completion[$i] as $j => $result){
+		echo "<tr><td><span style='color:grey'>". ($j + 1) ." &nbsp </span>".$result."</td>";
+		//$onclickStr = "addOne(document.getElementById('rateValue".$formID."'), 'resonable')";
+		echo "<td><input type='radio' name='group".($j + 1).$formID."' value='nonRelevant' checked></td>";
+		echo "<td><input type='radio' name='group".($j + 1).$formID."' value='neutral'></td>";
+		echo "<td><input type='radio' name='group".($j + 1).$formID."' value='Relevant'></td></tr>";
+	}
+?>
+				<!-- <tr>
 				<td><label for="resonable" id="resonable_label">How many records are reasonable</label>  </td>
 				<td><input type="text" name="resonable" id="resonable" size="2" value="0" class="text-input" /> </td>  
 				<td><button type="button" name="add" onclick="addOne(this.form, 'resonable')">+1</button></td>
-				</tr> 
+				</tr> --> 
 				<tr>
-				<td><label for="diversity" id="diversity_label">How many different intents in the result</label> </td>  
+				<td><label for="diversity" id="diversity_label">How many different and useful intents</label> </td>  
 				<td><input type="text" name="diversity" id="diversity" size="2" value="0" class="text-input" /> </td>
 				<td><button type="button" name="add" onclick="addOne(this.form, 'diversity')">+1</button></td>
 				</tr>  
