@@ -200,11 +200,11 @@ class KeyStroke{
 		$obj = new KeyStroke("gucci","neiman cannotmatch cars");
 		//$obj = new KeyStroke("mapquest", "yahoo maps");
 		$keyCount = $obj->SimulateUserTyping();
-		print_r($keyCount);
+		//print_r($keyCount);
 	}
 }
 
-KeyStroke::test();
+//KeyStroke::test();
 
 
 ?>

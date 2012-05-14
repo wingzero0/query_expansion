@@ -73,12 +73,12 @@ foreach($partialQ2 as $i => $pq):
 				<td><button type="button" name="add" onclick="addOne(this.form, 'resonable')">+1</button></td>
 				</tr> --> 
 				<tr>
-				<td><label for="diversity" id="diversity_label">How many different and useful intents</label> </td>  
+				<td><label for="diversity" id="diversity_label">How many different and useful intents?</label> </td>  
 				<td><input type="text" name="diversity" id="diversity" size="2" value="0" class="text-input" /> </td>
 				<td><button type="button" name="add" onclick="addOne(this.form, 'diversity')">+1</button></td>
 				</tr>  
 				<tr>
-				<td><label for="duplicate" id="duplicate_label">How many duplicate results</label>  </td>
+				<td><label for="duplicate" id="duplicate_label">How many duplicate results?</label>  </td>
 				<td><input type="text" name="duplicate" id="duplicate" size="2" value="0" class="text-input" /></td>
 				<td><button type="button" name="add" onclick="addOne(this.form, 'duplicate')">+1</button></td>  
 				</tr>
@@ -99,7 +99,8 @@ foreach($partialQ2 as $i => $pq):
 <?php 
 endforeach;
 ?>
-	<button type="button" name="back" onclick="window.history.back()">Back Page</button>
+	<button type="button" name="back" onclick="window.location = './generateLink.php?user=<?php echo $_GET['user'];?>'">Back Page</button>
+	
 	</div>
 	<!--<div style="clear:both"></div> -->
 	</body>
