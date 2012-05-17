@@ -62,9 +62,9 @@ foreach($partialQ2 as $i => $pq):
 	foreach($completion[$i] as $j => $result){
 		echo "<tr><td><span style='color:grey'>". ($j + 1) ." &nbsp </span>".$result."</td>";
 		//$onclickStr = "addOne(document.getElementById('rateValue".$formID."'), 'resonable')";
-		echo "<td><input type='radio' name='group".($j + 1).$formID."' value='nonRelevant' checked></td>";
-		echo "<td><input type='radio' name='group".($j + 1).$formID."' value='neutral'></td>";
-		echo "<td><input type='radio' name='group".($j + 1).$formID."' value='Relevant'></td></tr>";
+		echo "<td><input type='radio' style='width:40px; height:40px;' name='group".($j + 1).$formID."' value='nonRelevant' checked></td>";
+		echo "<td><input type='radio' style='width:40px; height:40px;' name='group".($j + 1).$formID."' value='neutral'></td>";
+		echo "<td><input type='radio' style='width:40px; height:40px;' name='group".($j + 1).$formID."' value='Relevant'></td></tr>";
 	}
 ?>
 				<!-- <tr>

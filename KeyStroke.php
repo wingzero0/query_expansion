@@ -5,16 +5,18 @@
 
 require_once("QuerySpliter.php");
 require_once("run_QueryCompletionAPI.php");
+require_once("run_BaselineAPI.php");
 define("SUCCESS", 1);
 define("CONT",2);
 
 class KeyStroke{
 	protected $spliter;
-	public function __construct($q1, $q2){
+	public function __construct($q1, $q2, $method){
 		$this->mTermPool = array(); // match term pool
 		$this->uTermPool = array(); // un-match term pool
 		$this->uTermOrder = array(); // un-match term pool
 		$this->q1 = $q1;
+		$this->completionMethod = $method;
 
 		$pattern = "/(\s)+/";
 		$this->q2Temp = preg_replace($pattern , " ", $q2);
@@ -113,7 +115,17 @@ class KeyStroke{
 	}
 	protected function SelectSuggestion($partialQ){
 		// get suggestions
-		$completionArray = run_QueryCompletion($this->q1, $partialQ, 5);
+		//$completionArray = array();
+		if ($this->completionMethod == "completion"){
+			$completionArray = run_QueryCompletion($this->q1, $partialQ, 5);
+		}else if ($this->completionMethod == "baseline"){
+			$completionArray["prob"] = run_Baseline($this->q1, $partialQ, 5);
+		}else if ($this->completionMethod == "nearest"){
+			$completionArray["prob"] = run_Nearest($this->q1, $partialQ, 5);
+		}else{
+			fprintf(STDERR, "no matching method\n");
+			die();
+		}
 		$max = 0;
 		$ret = array();
 		$i = 0;
