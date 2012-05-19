@@ -1,6 +1,6 @@
 #!/bin/bash
 # bash all_IndependentInclusionRate.sh inputPrefix/ outputPrefix/ method
-# bash all_IndependentInclusionRate.sh tmpOutput/ InclusionRateScore/ completion
+# bash all_IndependentInclusionRate.sh nttestOutput/ InclusionRateScore/ completion
 
 inputPath=$1
 outputPath=$2
@@ -10,6 +10,7 @@ for t in 0 1 2 3
 do
 	for ((c=1;c<20;c=c+1))
 	do
-		php run_InclusionRate.php -input "$inputPath"/independent_"$t"_"$c"/"$method"_all.txt > "$outputPath"/independent_"$t"_"$c"/"$method"_all.txt
+		php run_InclusionRate.php -input "$inputPath"/independent_"$t"_"$c"/"$method"_-2.5down.txt > "$outputPath"/independent_"$t"_"$c"/"$method"_all.txt
+		#php run_InclusionRate.php -input "$inputPath"/independent_"$t"_"$c"/"$method"_all.txt > "$outputPath"/independent_"$t"_"$c"/"$method"_all.txt
 	done
 done
