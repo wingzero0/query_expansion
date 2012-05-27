@@ -7,8 +7,8 @@ inputPath=$1
 outputPath=$2
 method=$3
 
-for ((i=1;i<=6;i=i+1))
+for ((i=21;i<=22;i=i+1))
 do
-	file="Alldata.""$i"".txt"
+	file="Alldata.txt.""$i"
 	php run_KeyStroke.php -i "$inputPath"/"$file" -o "$outputPath"/"$file" -m $method &
 done

@@ -5,7 +5,7 @@ mysql_select_db($database_cnn,$b95119_cnn);
 
 $systemPath = "/home/b95119/query_expansion/";
 
-$file = "userStudy2.txt";
+$file = "userStudy.txt";
 $fp = fopen($file, "r");
 if ($fp == null){
 	printf("%s can not open\n", $file);

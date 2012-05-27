@@ -96,7 +96,7 @@ $rank = GetRecords($_GET["method"], $_GET["dirnamePrefix"]);
 						},
 						title: {
 							enable: true,
-							text: 't_c',
+							text: 'x_y',
 						},
 					},
 					yAxis: {

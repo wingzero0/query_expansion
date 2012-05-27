@@ -5,6 +5,11 @@
 // setting.
 //
 require_once(dirname(__FILE__)."/QueryGoogle.php");
+require_once(dirname(__FILE__)."/connection.php");
+// require_once("/home/b95119/mylib/kit_lib.php");
+define("GROUPBY_METHOD", 1);
+define("GROUPBY_METHODTC", 2);
+mysql_select_db($database_cnn,$b95119_cnn);
 
 class UserStudy{
 	protected $snippyPool;
@@ -153,7 +158,59 @@ class UserStudy{
 		}
 		return $partailQ;
 	}
-	//public function GetResult() 
+	private static function _StatisticsDB($fp, $recordTB, $method, $format = GROUPBY_METHOD){
+		if ($format == GROUPBY_METHOD){
+			$sql = sprintf(
+				"select `methodID`, 
+				SUM(  `nonRelevant` ) , SUM(  `neutral` ) , SUM(  `Relevant` ) , SUM(  `diversity` ) , SUM(  `duplicate` ) , SUM(  `numberOfRecord` ) ,
+				count(*) from `%s` group by `methodID`",
+				$recordTB
+			);
+			$result = mysql_query($sql) or die( $sql."\n".mysql_error() );
+			fprintf($fp, "`methodID`\tSUM(`nonRelevant`)\tSUM(`neutral`)\tSUM(`Relevant`)\tSUM(`diversity`)\tSUM(`duplicate`)\tSUM(`numberOfRecord`)\n");
+			while( $row = mysql_fetch_row($result) ){
+				fprintf($fp, "%s\t", $method[$row[0]] );
+				for($i = 1; $i <=6; $i++){
+					fprintf($fp, "%lf\t", doubleval($row[$i]) / doubleval ($row[7]) );
+				}
+				fprintf($fp, "\n");
+			}
+		}else if ($format == GROUPBY_METHODTC){
+			$sql = sprintf(
+				"select `methodID`, `t`, `c` , 
+				SUM(  `nonRelevant` ) , SUM(  `neutral` ) , SUM(  `Relevant` ) , SUM(  `diversity` ) , SUM(  `duplicate` ) , SUM(  `numberOfRecord` ) ,
+				count(*) from `%s` group by `methodID`, `t`, `c`",
+				$recordTB
+			);
+			$result = mysql_query($sql) or die( $sql."\n".mysql_error() );
+			fprintf($fp, "`methodID`\t`t`\t`c`\tSUM(`nonRelevant`)\tSUM(`neutral`)\tSUM(`Relevant`)\tSUM(`diversity`)\tSUM(`duplicate`)\tSUM(`numberOfRecord`)\n");
+			while( $row = mysql_fetch_row($result) ){
+				fprintf($fp, "%s\t", $method[$row[0]] );
+				for($i = 1;$i<=2;$i++){
+					fprintf($fp, "%d\t", intval($row[$i]));
+				}
+				for($i = 3; $i <=8; $i++){
+					fprintf($fp, "%lf\t", doubleval($row[$i]) / doubleval ($row[9]) );
+				}
+				fprintf($fp, "\n");
+			}
+		}
+
+	}
+	public static function StatisticsDB($recordTB, $methodTB, $outFile){
+		$fp = fopenForWrite($outFile);
+		if ($fp == null){
+			return;
+		}
+		$sql = sprintf("select `id`, `methodName` from `%s`", $methodTB);
+		$result = mysql_query($sql) or die( $sql."\n".mysql_error() );
+		while( $row = mysql_fetch_row($result) ){
+			$method[$row[0]] = $row[1];
+		}
+		UserStudy::_StatisticsDB($fp, $recordTB, $method, GROUPBY_METHOD);
+
+		fclose($fp);
+	}
 }
 
 

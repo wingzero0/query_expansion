@@ -34,11 +34,11 @@ function GetRecords($dirname){
 
 $rates = GetRecords($_GET["dirname"]);
 $methodsTitle = array("completionPure" => "ConceptCompletion", 
-	"baseline" => "Baseline", 
-	"pairandfreq" => "QueryPair", 
-	"flowandfreq" => "ConceptPair", 
-	"nearestPure" => "Nearest", 
-	"completionEntropy" => "ConceptCompletion + Entropy",
+	"baseline" => "Pure Frequency", 
+	"pairandfreq" => "Pair Frequency", 
+	"flowandfreq" => "Concept Frequnecy", 
+	"nearestPure" => "Nearest",
+	"completionEntropy" => "ConceptCompletion + entropy",
 	"nearestHybrid" => "NearestHybrid"
 );
 ?>
@@ -72,7 +72,7 @@ $methodsTitle = array("completionPure" => "ConceptCompletion",
 					chart: {
 						renderTo: 'container',
 						defaultSeriesType: 'line',
-						width: 1000,
+						width: 800,
 						marginRight: 300,
 						marginBottom: 50
 					},

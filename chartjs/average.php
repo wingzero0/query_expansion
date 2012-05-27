@@ -59,9 +59,9 @@ function GetRecords($dirname){
 $nums = LoadValidNumber($_GET["dirnamePrefix"]."DataStatictics.txt");
 
 $methodsTitle = array("completionPure" => "ConceptCompletion", 
-	"baseline" => "Baseline", 
-	"pairandfreq" => "QueryPair", 
-	"flowandfreq" => "ConceptPair", 
+	"baseline" => "Pure Frequency", 
+	"pairandfreq" => "Pair Frequency", 
+	"flowandfreq" => "Concept Frequnecy", 
 	"nearestPure" => "Nearest",
 	"completionEntropy" => "ConceptCompletion + entropy",
 	"nearestHybrid" => "NearestHybrid"
@@ -106,6 +106,12 @@ foreach ($methodsTitle as $method => $title){
 		$allAvg[$method][$i] /= (double)$totalSum;
 	}
 }
+
+$title = array(
+	"ttest_" => "Dependent data", 
+	"independent" => "Independent Data",
+	"" => "All Data"
+);
 //print_r($avg);
 //print_r($allAvg);
 ?>
@@ -139,7 +145,7 @@ foreach ($methodsTitle as $method => $title){
 					chart: {
 						renderTo: 'container',
 						defaultSeriesType: 'line',
-						width: 1000,
+						width: 800, //original 1000
 						marginRight: 300,
 						marginBottom: 50
 					},
@@ -148,7 +154,7 @@ foreach ($methodsTitle as $method => $title){
 						x: -20 //center
 					},
 					subtitle: {
-						text: ' <?php echo $_GET["dirnamePrefix"] ?>',
+						text: ' <?php echo $title[$_GET["dirnamePrefix"]];?>',
 						x: -20
 					},
 					xAxis: {
@@ -213,7 +219,7 @@ foreach ($methodsTitle as $method => $title){
 								foreach( $methodsTitle as $method => $title ){
 						?>
 						{
-						name: '<?php echo $methodsTitle[$method]." t=".$t ?>',
+						name: '<?php echo $methodsTitle[$method]." x=".$t ?>',
 						data: [
 								<?php 
 									for ($i = 1;$i<= 10;$i++){
@@ -227,7 +233,7 @@ foreach ($methodsTitle as $method => $title){
 								foreach( $methodsTitle as $method => $title ){
 						?>
 						{
-						name: '<?php echo $methodsTitle[$method]." all" ?>',
+						name: '<?php echo $methodsTitle[$method] ?>',
 						data: [
 								<?php 
 									for ($i = 1;$i<= 10;$i++){
