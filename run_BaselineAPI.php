@@ -26,7 +26,8 @@ function run_PairFreq($q1, $q2, $DBVerNum,$limit = 10){
 function run_Nearest($q1, $q2, $DBVerNum){
 	$para["qTB"] = "QueryCluster_".$DBVerNum."_Clean";
 	$obj = new NearestCompletion($q1, $q2, "NgramVector", $para["qTB"]);
-	$nearest = $obj->GetCompletion(true);
+	$nearest = $obj->GetCompletion(true);//true for hybrid
+	//$nearest = $obj->GetCompletion(false);//false for pure
 	return $nearest;
 }
 function run_SnippyNearest($q1, $q2, $DBVerNum){
