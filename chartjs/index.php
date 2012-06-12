@@ -33,13 +33,13 @@ function GetRecords($dirname){
 }
 
 $rates = GetRecords($_GET["dirname"]);
-$methodsTitle = array("completionPure" => "ConceptCompletion", 
+$methodsTitle = array("completionPure" => "Concept Completion", 
 	"baseline" => "Pure Frequency", 
 	"pairandfreq" => "Pair Frequency", 
 	"flowandfreq" => "Concept Frequnecy", 
-	"nearestPure" => "Nearest",
-	"completionEntropy" => "ConceptCompletion + entropy",
-	"nearestHybrid" => "NearestHybrid"
+	"nearestPure" => "Nearest Completion",
+	"completionEntropy" => "Concept Completion + entropy",
+	"nearestHybrid" => "Nearest Hybrid Completion"
 );
 ?>
 
@@ -77,12 +77,12 @@ $methodsTitle = array("completionPure" => "ConceptCompletion",
 						marginBottom: 50
 					},
 					title: {
-						text: ' InclustionRate ',
-						x: -20 //center
+						text: ' Inclusion Rate ',
+						x: -120 //center
 					},
 					subtitle: {
 						text: ' <?php echo $_GET["dirname"] ?>',
-						x: -20
+						x: -120
 					},
 					xAxis: {
 						categories: [

@@ -58,13 +58,13 @@ function GetRecords($dirname){
 
 $nums = LoadValidNumber($_GET["dirnamePrefix"]."DataStatictics.txt");
 
-$methodsTitle = array("completionPure" => "ConceptCompletion", 
+$methodsTitle = array("completionPure" => "Concept Completion", 
 	"baseline" => "Pure Frequency", 
 	"pairandfreq" => "Pair Frequency", 
 	"flowandfreq" => "Concept Frequnecy", 
-	"nearestPure" => "Nearest",
-	"completionEntropy" => "ConceptCompletion + entropy",
-	"nearestHybrid" => "NearestHybrid"
+	"nearestPure" => "Nearest Completion",
+	"completionEntropy" => "Concept Completion + entropy",
+	"nearestHybrid" => "Nearest Hybrid Completion"
 );
 	
 $totalSum = 0;
@@ -151,11 +151,11 @@ $title = array(
 					},
 					title: {
 						text: ' Average Inclusion Rate ',
-						x: -20 //center
+						x: -120 //center
 					},
 					subtitle: {
 						text: ' <?php echo $title[$_GET["dirnamePrefix"]];?>',
-						x: -20
+						x: -120
 					},
 					xAxis: {
 						categories: [
