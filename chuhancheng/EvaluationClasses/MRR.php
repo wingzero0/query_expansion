@@ -19,6 +19,9 @@ class MRR extends EvaluationBase{
 		}
 	}
 	public function GetEverageScore(){
+		if ($this->num == 0){
+			return 0.0;
+		}
 		return $this->totalScore / doubleval($this->num);
 	}
 	public function GetTotalScore(){
@@ -29,13 +32,15 @@ class MRR extends EvaluationBase{
 	}
 	public function AddRecord($gt, $results){
 		$weight = count($results);
-		$score = $this->GetScore($gt, $results, $weight);
+		//$score = $this->GetScore($gt, $results, $weight);
+		$score = $this->GetScore($gt, $results, 1.0);
 		$this->num +=1;
 		$this->totalScore += $score;
 		return $score;
 	}
 }
 
+/*
 require_once "/home/wingzero/mylib/kit_lib.php";
 
 //$para = ParameterParser($argc, $argv);
@@ -56,4 +61,5 @@ $obj = new MRR();
 $obj->SimpleReadFile(dirname(__FILE__). "/completion_all.txt");
 $score = $obj->GetEverageScore();
 echo $score."<br>\n";
+*/
 ?>
