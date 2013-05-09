@@ -80,25 +80,25 @@ $title[""] = "All data";
 					},
 					title: {
 						text: ' MRR ',
-						x: -20 //center
+						x: -125 //center
 					},
 					subtitle: {
 						text: ' <?php echo $title["".$_GET["dirnamePrefix"]] ?>',
-						x: -20
+						x: -125
 					},
 					xAxis: {
 						categories: [
 						<?php
-							for ($t = 0; $t <=3; $t++){
+							for ($t = intval($_GET["tstart"]); $t <= intval($_GET["tend"]); $t++){
 								for ($c = 1; $c<=19; $c++){
 									echo "'".$t."_".$c."', ";
 								}
 							}
 						?>],
 						labels: {
-							align: 'left',
+							//align: 'left',
 							rotation: 90,
-							step: 2
+							step: 1
 						},
 						title: {
 							enable: true,
@@ -139,7 +139,8 @@ $title[""] = "All data";
 						name: '<?php echo $methodsTitle[$methods]; ?>',
 						data: [
 							<?php 
-								for ($t = 0; $t <=3; $t++){
+								for ($t = intval($_GET["tstart"]); $t <= intval($_GET["tend"]); $t++){
+								//for ($t = 0; $t <=3; $t++){
 									for ($c = 1; $c<=19; $c++){
 										echo $row[$t."_".$c].", ";
 									}
